@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: fingerprint-api
+  datasource:
+    url: jdbc:mysql://localhost:3306/prueba_entradas
+    username: root
+    password: Sayo8090
+  jpa:
+    hibernate:
+      ddl-auto: update
