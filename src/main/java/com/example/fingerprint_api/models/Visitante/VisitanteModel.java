@@ -12,7 +12,7 @@ public class VisitanteModel {
     @Column(unique = true, nullable = false)
     private Integer id_visitante;
 
-    // Campos de auditoría y seguridad
+    // Campos de auditoría y seguridad (Mantenidos)
     @Column(name = "createdAt")
     private LocalDateTime createdAt;
 
@@ -31,12 +31,9 @@ public class VisitanteModel {
     @Column(name = "uuid", length = 50)
     private String uuid;
 
-    // Campos de información personal
+    // Campos del Front-End (Imagen)
     @Column(name = "primer_nombre", length = 255)
-    private String primerNombre;
-
-    @Column(name = "segundo_nombre", length = 45)
-    private String segundoNombre;
+    private String primerNombre; // Nombre
 
     @Column(name = "apellido_paterno", length = 255)
     private String apellidoPaterno;
@@ -44,172 +41,119 @@ public class VisitanteModel {
     @Column(name = "apellido_materno", length = 255)
     private String apellidoMaterno;
 
+    @Column(name = "sexo", length = 15) // << NUEVO CAMPO
+    private String sexo;
+
+    @Column(name = "edad") // << NUEVO CAMPO
+    private Integer edad;
+
     @Column(name = "num_telefono")
-    private Long numTelefono;
+    private Long numTelefono; // Teléfono
 
-    @Column(name = "activo", length = 255)
-    private String activo;
+    @Column(name = "asunto", length = 255) // Mapeado de 'Asunto' (antes motivoVisita)
+    private String asunto;
 
-    // Campos específicos del visitante
-    @Column(name = "procedencia", length = 255)
-    private String procedencia;
+    // --- Campo para Visitas de Grupo (Registro Único) ---
+    @Column(name = "num_acompanantes")
+    private Integer numeroAcompañantes; // Nuevo campo para el número de personas en el grupo (además del representante)
+// ...
 
-    @Column(name = "motivo_visita", length = 255)
-    private String motivoVisita;
+    // ELIMINADOS: segundoNombre, activo, procedencia, identificacion, qrTemporal, qrExpiracion
 
-    @Column(name = "identificacion", length = 255)
-    private String identificacion;
-
-    // Campos para QR Temporal
-    @Column(name = "qr_temporal", length = 255)
-    private String qrTemporal;
-
-    @Column(name = "qr_expiracion")
-    private LocalDateTime qrExpiracion;
-
-    // GETTERS Y SETTERS (Asegúrate de incluir todos los nuevos y eliminar los viejos)
+    // GETTERS Y SETTERS
 
     public Integer getId_visitante() {
         return id_visitante;
     }
-
     public void setId_visitante(Integer id_visitante) {
         this.id_visitante = id_visitante;
     }
-
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
-
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
-
     public LocalDateTime getUpdateAt() {
         return updateAt;
     }
-
     public void setUpdateAt(LocalDateTime updateAt) {
         this.updateAt = updateAt;
     }
-
     public Integer getVersion() {
         return version;
     }
-
     public void setVersion(Integer version) {
         this.version = version;
     }
-
     public Integer getUsuario() {
         return usuario;
     }
-
     public void setUsuario(Integer usuario) {
         this.usuario = usuario;
     }
-
     public Integer getDeleted() {
         return deleted;
     }
-
     public void setDeleted(Integer deleted) {
         this.deleted = deleted;
     }
-
     public String getUuid() {
         return uuid;
     }
-
     public void setUuid(String uuid) {
         this.uuid = uuid;
     }
-
     public String getPrimerNombre() {
         return primerNombre;
     }
-
     public void setPrimerNombre(String primerNombre) {
         this.primerNombre = primerNombre;
     }
-
-    public String getSegundoNombre() {
-        return segundoNombre;
-    }
-
-    public void setSegundoNombre(String segundoNombre) {
-        this.segundoNombre = segundoNombre;
-    }
-
     public String getApellidoPaterno() {
         return apellidoPaterno;
     }
-
     public void setApellidoPaterno(String apellidoPaterno) {
         this.apellidoPaterno = apellidoPaterno;
     }
-
     public String getApellidoMaterno() {
         return apellidoMaterno;
     }
-
     public void setApellidoMaterno(String apellidoMaterno) {
         this.apellidoMaterno = apellidoMaterno;
     }
-
     public Long getNumTelefono() {
         return numTelefono;
     }
-
     public void setNumTelefono(Long numTelefono) {
         this.numTelefono = numTelefono;
     }
-
-    public String getActivo() {
-        return activo;
+    public String getAsunto() {
+        return asunto;
+    }
+    public void setAsunto(String asunto) {
+        this.asunto = asunto;
     }
 
-    public void setActivo(String activo) {
-        this.activo = activo;
+    //para masivo=========
+    public Integer getNumeroAcompañantes() {
+        return numeroAcompañantes;
     }
 
-    public String getProcedencia() {
-        return procedencia;
+    public void setNumeroAcompañantes(Integer numeroAcompañantes) {
+        this.numeroAcompañantes = numeroAcompañantes;
     }
-
-    public void setProcedencia(String procedencia) {
-        this.procedencia = procedencia;
+    //================
+    public String getSexo() {
+        return sexo;
     }
-
-    public String getMotivoVisita() {
-        return motivoVisita;
+    public void setSexo(String sexo) {
+        this.sexo = sexo;
     }
-
-    public void setMotivoVisita(String motivoVisita) {
-        this.motivoVisita = motivoVisita;
+    public Integer getEdad() {
+        return edad;
     }
-
-    public String getIdentificacion() {
-        return identificacion;
-    }
-
-    public void setIdentificacion(String identificacion) {
-        this.identificacion = identificacion;
-    }
-
-    public String getQrTemporal() {
-        return qrTemporal;
-    }
-
-    public void setQrTemporal(String qrTemporal) {
-        this.qrTemporal = qrTemporal;
-    }
-
-    public LocalDateTime getQrExpiracion() {
-        return qrExpiracion;
-    }
-
-    public void setQrExpiracion(LocalDateTime qrExpiracion) {
-        this.qrExpiracion = qrExpiracion;
+    public void setEdad(Integer edad) {
+        this.edad = edad;
     }
 }

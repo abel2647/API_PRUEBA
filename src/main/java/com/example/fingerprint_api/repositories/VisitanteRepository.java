@@ -12,13 +12,9 @@ public interface VisitanteRepository extends CrudRepository <VisitanteModel,Inte
 
     Optional<VisitanteModel> findByUuid(String uuid);
 
-    ArrayList<VisitanteModel> findByActivo(String number);
-
     ArrayList<VisitanteModel> findByDeleted(int i);
 
     ArrayList<VisitanteModel> findByPrimerNombreContainingIgnoreCase(String nombre);
 
-    ArrayList<VisitanteModel> findByProcedenciaContainingIgnoreCase(String procedencia);
-
-    Optional<VisitanteModel> findByQrTemporal(String qrTemporal);
+    // ELIMINADAS: findByActivo, findByProcedencia, findByQrTemporal
 }

@@ -6,4 +6,6 @@ export interface VisitanteForm{
     edad: string; //string para coincidir con el valor del input
     numTelefono: string; //.....
     asunto: string;
+
+    numeroAcompañantes: string;
 }
