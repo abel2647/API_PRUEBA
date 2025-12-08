@@ -69,36 +69,64 @@ export const RegistroVisitanteForm = () => {
         setFormData(prev => ({ ...prev, sexo: value }));
     };
 
-    // ----------------------------------------------------
     // LÓGICA DE IMPRESIÓN
-    // ----------------------------------------------------
 
     const handlePrint = () => {
         if (typeof window !== 'undefined') {
-            const printContent = document.getElementById('visitor-pass');
+            // Datos necesarios del estado
+            const passId = registroId || 'N/A';
+            const asuntoText = formData.asunto;
+            const numAcompanantes = Number(formData.numeroAcompañantes);
 
-            if (printContent) {
-                const printWindow = window.open('', '', 'height=500,width=800');
-                if (printWindow) {
-                    printWindow.document.write('<html><head><title>Pase de Visitante</title>');
-                    printWindow.document.write('</head><body>');
-                    printWindow.document.write('<div style="padding: 20px; border: 1px solid #ccc; max-width: 400px; margin: 20px auto;">');
-                    printWindow.document.write(printContent.innerHTML);
-                    printWindow.document.write('</div></body></html>');
-                    printWindow.document.close();
-                    printWindow.print();
+            //Código SVG del QR (usando el ID 'qr-pass-container')
+            const qrContainer = document.getElementById('qr-pass-container');
+            let qrCodeSvgHtml = '';
+            if (qrContainer) {
+                qrCodeSvgHtml = qrContainer.innerHTML;
+            }
 
-                    // Limpiar el formulario después de la impresión
-                    handleReset();
-                }
+            //Plantilla HTML del Ticket
+            const printContent = `
+            <div style="font-family: Arial, sans-serif; width: 350px; border: 3px solid #000; padding: 20px; margin: 20px auto; display: flex; flex-direction: column; text-align: center;">
+                
+                <h2 style="font-size: 18px; margin-bottom: 5px; font-weight: bold;">PASE DE ACCESO DE VISITANTE</h2>
+                
+                <div style="border-top: 1px dashed #333; margin: 15px 0;"></div>
+
+                <div style="margin-bottom: 10px; padding: 10px; display: flex; justify-content: center; align-items: center;">
+                    ${qrCodeSvgHtml}
+                </div>
+                
+                <div style="border-top: 1px dashed #333; margin: 15px 0;"></div>
+
+                <p style="font-size: 14px; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">ASUNTO: ${asuntoText}</p>
+                
+                <div style="border-top: 1px dashed #333; margin: 10px 0;"></div>
+
+                <p style="font-size: 12px; margin-bottom: 5px;">ACOMPAÑANTES: ${numAcompanantes} PERSONAS</p>
+                <p style="font-size: 12px; margin-bottom: 5px; font-weight: bold;">ID DE REGISTRO: ${passId}</p>
+            </div>
+        `;
+
+            //Ventana de impresión
+            const printWindow = window.open('', '', 'height=500,width=400');
+            if (printWindow) {
+                printWindow.document.write('<html><head><title>Pase de Visitante</title>');
+                // Estilos para forzar la impresión en blanco y negro
+                printWindow.document.write('<style>@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; } }</style>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(printContent);
+                printWindow.document.write('</body></html>');
+
+                printWindow.document.close();
+                printWindow.print();
+
+                handleReset();
             }
         }
     };
 
-
-    // ----------------------------------------------------
     // LÓGICA DE ENVÍO A LA API
-    // ----------------------------------------------------
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -106,7 +134,7 @@ export const RegistroVisitanteForm = () => {
         setMessage(null);
         setQrValue(null);
 
-        // Prepara el objeto JSON que va a Spring Boot
+        // Objeto JSON que va a Spring Boot
         const dataToSend = {
             primerNombre: formData.primerNombre,
             apellidoPaterno: formData.apellidoPaterno,
@@ -159,7 +187,7 @@ export const RegistroVisitanteForm = () => {
     }
 
     return (
-        // La ID 'visitor-pass' es crucial para la función de impresión
+        // La ID 'visitor-pass' para la función de impresión
         <Card id="visitor-pass" className="w-full max-w-4xl mx-auto shadow-2xl mt-10">
             <CardHeader>
                 <CardTitle className="text-3xl font-bold">Registro de visitantes</CardTitle>
@@ -246,17 +274,23 @@ export const RegistroVisitanteForm = () => {
                             {/* Este espacio ayuda a que el QR se alinee a la derecha de la página */}
                         </div>
 
-                        {/* COLUMNA 3: CONTENEDOR DEL QR (SE MUESTRA/OCULTA AQUÍ) */}
+                        {/* COLUMNA 3: CONTENEDOR DEL QR (Aquí se extrae el HTML) */}
                         <div className={`row-span-3 col-span-1 
-                             flex flex-col items-center justify-center p-4 h-full
-                             ${qrValue ? 'block' : 'hidden'} 
-                             border border-gray-200 rounded-lg bg-white`}
+                 flex flex-col items-center justify-center p-4 h-full
+                 ${qrValue ? 'block' : 'hidden'} 
+                 border border-gray-200 rounded-lg bg-white`}
                         >
                             {/* Contenido del Pase (Solo visible si qrValue existe) */}
                             <div className="text-sm text-gray-500 mb-2">
                                 {`Pase ID: ${registroId}`}
                             </div>
-                            {qrValue && <QRCodeDisplay value={qrValue} />}
+
+                            {/* Contenedor con el ID para la extracción del SVG */}
+                            {qrValue && (
+                                <div id="qr-pass-container">
+                                    <QRCodeDisplay value={qrValue} />
+                                </div>
+                            )}
                         </div>
 
                         {/* ASUNTO (OCUPA EL ESPACIO COMPLETO CUANDO EL QR ESTÁ OCULTO) */}
