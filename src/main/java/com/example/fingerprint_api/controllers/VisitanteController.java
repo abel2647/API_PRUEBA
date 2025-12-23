@@ -30,6 +30,22 @@ public class VisitanteController {
         return visitante.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
+    // ========== NUEVO ENDPOINT PARA VALIDACIÓN DE QR ==========
+// Solo necesita el UUID (la clave que sale del escáner)
+    @GetMapping("/validar/{uuid}")
+    public ResponseEntity<VisitanteModel> obtenerVisitantePorUuid(@PathVariable String uuid) {
+        // Llama al nuevo método del servicio que solo busca por UUID
+        Optional<VisitanteModel> visitante = visitanteService.obtenerVisitantePorUuid(uuid);
+
+        if (visitante.isPresent()) {
+            // Devuelve 200 OK y los datos del visitante si existe
+            return ResponseEntity.ok(visitante.get());
+        } else {
+            // Devuelve 404 NOT FOUND si el UUID no existe
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @GetMapping("/buscar/{nombre}")
     public ArrayList<VisitanteModel> buscarVisitantesPorNombre(@PathVariable String nombre){
         return visitanteService.buscarVisitantesPorNombre(nombre);

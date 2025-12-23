@@ -57,7 +57,8 @@ public class VisitanteModel {
     @Column(name = "num_acompanantes")
     private Integer numeroAcompañantes; // Nuevo campo para el número de personas en el grupo (además del representante)
 // ...
-
+    @Column(name = "fecha_expiracion")
+    private LocalDateTime fechaExpiracion;
     // ELIMINADOS: segundoNombre, activo, procedencia, identificacion, qrTemporal, qrExpiracion
 
     // GETTERS Y SETTERS
@@ -155,5 +156,12 @@ public class VisitanteModel {
     }
     public void setEdad(Integer edad) {
         this.edad = edad;
+    }
+
+    public LocalDateTime getFechaExpiracion() {
+        return fechaExpiracion;
+    }
+    public void setFechaExpiracion(LocalDateTime fechaExpiracion) {
+        this.fechaExpiracion = fechaExpiracion;
     }
 }

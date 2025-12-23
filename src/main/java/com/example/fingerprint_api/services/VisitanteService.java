@@ -24,6 +24,14 @@ public class VisitanteService {
 
     // Registrar un nuevo visitante (POST)
     public VisitanteModel registrarVisitante(VisitanteModel visitante){
+        // Establecer la fecha de creación
+        LocalDateTime now = LocalDateTime.now();
+        visitante.setCreatedAt(now);
+        visitante.setUpdateAt(now);
+
+        // Calcular la fecha de expiración
+        visitante.setFechaExpiracion(now.plusHours(1)); // Expira en 1 hora
+
         // Establecer campos automáticos
         visitante.setCreatedAt(LocalDateTime.now());
         visitante.setUpdateAt(LocalDateTime.now());
@@ -43,6 +51,12 @@ public class VisitanteService {
             return visitante;
         }
         return Optional.empty();
+    }
+
+    // Método para obtener visitante SOLO por UUID
+    public Optional<VisitanteModel> obtenerVisitantePorUuid(String uuid) {
+        // Usamos el método definido en el repositorio
+        return visitanteRepository.findByUuid(uuid);
     }
 
     // Buscar por nombre

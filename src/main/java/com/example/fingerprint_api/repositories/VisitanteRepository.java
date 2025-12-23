@@ -17,4 +17,5 @@ public interface VisitanteRepository extends CrudRepository <VisitanteModel,Inte
     ArrayList<VisitanteModel> findByPrimerNombreContainingIgnoreCase(String nombre);
 
     // ELIMINADAS: findByActivo, findByProcedencia, findByQrTemporal
+
 }
