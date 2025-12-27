@@ -1,50 +1,60 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 
-export default function LoginPage() {
-    const [user, setUser] = useState('');
-    const [pass, setPass] = useState('');
+import React, { useState, useEffect } from 'react';
+import { Sidebar } from './Sidebar'; // Asegúrate que Sidebar.tsx esté en la misma carpeta
+import { cn } from '@/lib/utils';
+import { usePathname, useRouter } from 'next/navigation';
+
+export default function MainLayout({ children }: { children: React.ReactNode }) {
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const pathname = usePathname();
     const router = useRouter();
 
-    const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    useEffect(() => {
+        // Verificamos si existe la sesión en el almacenamiento local
+        const logged = localStorage.getItem('isLogged');
 
-        // Capturamos los datos directamente del formulario para evitar errores de sincronización
-        const formData = new FormData(e.currentTarget);
-        const formUser = formData.get('usuario')?.toString().trim();
-        const formPass = formData.get('password')?.toString().trim();
-
-        console.log("Intentando login con:", formUser, formPass); // Para que revises en la consola (F12)
-
-        // Validación exacta
-        if (formUser === 'admin' && formPass === '123456') {
-            localStorage.setItem('isLogged', 'true');
-            localStorage.setItem('userRole', 'ADMIN');
-            // Usamos window.location.href para forzar la recarga completa del MainLayout
-            window.location.href = '/';
-        } else {
-            alert('Credenciales inválidas.');
+        if (!logged && pathname !== '/login') {
+            // Si no está logueado y no está en la página de login, lo mandamos para allá
+            setIsAuthenticated(false);
+            router.push('/login');
+        } else if (logged) {
+            // Si está logueado, permitimos la entrada
+            setIsAuthenticated(true);
         }
-    };
+        setLoading(false);
+    }, [pathname, router]);
+
+    // Mientras verificamos la sesión, mostramos una pantalla de carga simple
+    if (loading) {
+        return (
+            <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-white">
+                Cargando sistema...
+            </div>
+        );
+    }
+
+    // Si estamos en el login, renderizamos la página "desnuda" (sin sidebar ni márgenes)
+    if (pathname === '/login') {
+        return <div className="min-h-screen bg-gray-900">{children}</div>;
+    }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-900">
-            <Card className="w-[350px]">
-                <CardHeader>
-                    <CardTitle className="text-center">Iniciar Sesión</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <Input placeholder="Usuario" onChange={e => setUser(e.target.value)} />
-                        <Input type="password" placeholder="Contraseña" onChange={e => setPass(e.target.value)} />
-                        <Button type="submit" className="w-full">Entrar</Button>
-                    </form>
-                </CardContent>
-            </Card>
+        <div className="flex min-h-screen bg-gray-50 text-slate-900">
+            {/* 1. Sidebar: recibe el estado de colapso */}
+            <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+
+            {/* 2. Área de Contenido Principal: el margen izquierdo (ml)
+                   cambia dinámicamente según el estado del Sidebar */}
+            <main className={cn(
+                "flex-1 transition-all duration-300 p-8 min-h-screen",
+                isCollapsed ? "ml-16" : "ml-64"
+            )}>
+                {/* Solo mostramos el contenido si está autenticado */}
+                {isAuthenticated ? children : null}
+            </main>
         </div>
     );
 }

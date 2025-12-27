@@ -1,69 +1,50 @@
 'use client';
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import React, { useState } from 'react';
 
 export default function LoginPage() {
+    const [error, setError] = useState('');
 
-    const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-
-        // 1. Extraemos los datos directamente de los inputs por su atributo 'name'
         const formData = new FormData(e.currentTarget);
-        const formUser = formData.get('usuario')?.toString().trim();
-        const formPass = formData.get('password')?.toString().trim();
+        const username = formData.get('usuario');
+        const password = formData.get('password');
 
-        // 2. Aquí es donde asignas los valores correctos
-        // IMPORTANTE: Escríbelos tal cual (minúsculas/mayúsculas importan)
-        if (formUser === 'admin' && formPass === '1234') {
-            console.log("Login exitoso");
-            localStorage.setItem('isLogged', 'true');
-            localStorage.setItem('userRole', 'ADMIN');
+        try {
+            const response = await fetch('http://localhost:8080/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
 
-            // Forzamos el redireccionamiento para que el Sidebar se entere
-            window.location.href = '/';
-        } else {
-            alert(`Acceso denegado.\nEscribiste: "${formUser}" / "${formPass}"\nSe esperaba: "admin" / "1234"`);
+            if (response.ok) {
+                const userData = await response.json();
+                // Si llegamos aquí, la base de datos ya dijo que el usuario es válido
+                localStorage.setItem('isLogged', 'true');
+                localStorage.setItem('userRole', userData.rol);
+                window.location.href = '/';
+            } else {
+                setError('Usuario o contraseña incorrectos en la base de datos');
+            }
+        } catch (err) {
+            setError('Error: No hay conexión con el servidor (Spring Boot)');
         }
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-900 fixed inset-0 z-[100]">
-            <Card className="w-full max-w-md shadow-2xl">
-                <CardHeader>
-                    <CardTitle className="text-2xl text-center font-bold">Iniciar Sesión</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="usuario">Usuario</Label>
-                            <Input
-                                id="usuario"
-                                name="usuario" // El 'name' debe coincidir con el formData.get
-                                type="text"
-                                placeholder="admin"
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Contraseña</Label>
-                            <Input
-                                id="password"
-                                name="password" // El 'name' debe coincidir con el formData.get
-                                type="password"
-                                placeholder="••••"
-                                required
-                            />
-                        </div>
-                        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                            Entrar al Sistema
-                        </Button>
-                    </form>
-                </CardContent>
-            </Card>
+        <div className="flex items-center justify-center min-h-screen bg-slate-900 fixed inset-0">
+            <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-2xl w-96 space-y-4">
+                <h2 className="text-2xl font-bold text-center text-gray-800">Acceso al Sistema</h2>
+                {error && <p className="bg-red-100 text-red-700 p-2 rounded text-sm text-center">{error}</p>}
+
+                <input name="usuario" type="text" placeholder="Usuario" className="w-full border p-3 rounded" required />
+                <input name="password" type="password" placeholder="Contraseña" className="w-full border p-3 rounded" required />
+
+                <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                    Entrar
+                </button>
+            </form>
         </div>
     );
 }

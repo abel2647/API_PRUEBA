@@ -10,11 +10,8 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*") // Permite peticiones desde tu Frontend
+@CrossOrigin(origins = "http://localhost:3000") // Esto permite que Next.js se conecte
 public class AuthController {
-
-    @Autowired
-    private UsuarioRepository usuarioRepository;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UsuarioModel loginRequest) {
