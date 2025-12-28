@@ -1,7 +1,6 @@
 package com.example.fingerprint_api.models.Alumno;
 
-//import java.sql.Blob;
-
+import java.sql.Blob; // O usar byte[] directamente que es más fácil con Hibernate
 import jakarta.persistence.*;
 import jdk.jfr.Timestamp;
 
@@ -65,8 +64,20 @@ public class AlumnoModel {
     @Column(name = "activo", length = 255)
     private String activo;
 
+    @Lob // Indica que es un objeto grande (BLOB)
+    @Column(name = "huella_fmd", columnDefinition="LONGBLOB")
+    private byte[] huellaFmd;
+
 
     //GET AND SETTER'S
+
+    public byte[] getHuellaFmd() {
+        return huellaFmd;
+    }
+
+    public void setHuellaFmd(byte[] huellaFmd) {
+        this.huellaFmd = huellaFmd;
+    }
 
     public String getActivo() {
         return activo;
