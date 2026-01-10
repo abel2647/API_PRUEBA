@@ -65,6 +65,18 @@ public class AlumnoModel {
     @Column(name = "activo", length = 255)
     private String activo;
 
+    @Lob // Indica que es un objeto grande (BLOB)
+    @Column(name = "huella_fmd", columnDefinition="LONGBLOB")
+    private byte[] huellaFmd;
+
+
+    public byte[] getHuellaFmd() {
+        return huellaFmd;
+    }
+
+    public void setHuellaFmd(byte[] huellaFmd) {
+        this.huellaFmd = huellaFmd;
+    }
 
     //GET AND SETTER'S
 

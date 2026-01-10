@@ -8,14 +8,14 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 @Repository
-public interface VisitanteRepository extends CrudRepository <VisitanteModel,Integer> {
+public interface VisitanteRepository extends CrudRepository<VisitanteModel, Integer> {
 
-    Optional<VisitanteModel> findByUuid(String uuid);
+    // Buscar si ya existe alguien con ese teléfono (para no duplicar personas)
+    Optional<VisitanteModel> findByNumTelefono(Long numTelefono);
 
-    ArrayList<VisitanteModel> findByDeleted(int i);
+    ArrayList<VisitanteModel> findByDeleted(int deleted);
 
     ArrayList<VisitanteModel> findByPrimerNombreContainingIgnoreCase(String nombre);
 
-    // ELIMINADAS: findByActivo, findByProcedencia, findByQrTemporal
-
+    // NOTA: Aquí YA NO va findByUuid, porque el UUID está en la otra tabla.
 }

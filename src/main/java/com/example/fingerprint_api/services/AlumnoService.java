@@ -398,7 +398,18 @@ public class AlumnoService {
         }
         return null;
     }
-
+    // En AlumnoService.java
+    public boolean guardarHuellaAlumno(Integer idAlumno, byte[] fmdBytes) {
+        Optional<AlumnoModel> alumnoOpt = alumnoRepository.findById(idAlumno);
+        if (alumnoOpt.isPresent()) {
+            AlumnoModel alumno = alumnoOpt.get();
+            alumno.setHuellaFmd(fmdBytes); // Actualiza el campo BLOB
+            alumno.setUpdateAt(LocalDateTime.now());
+            alumnoRepository.save(alumno); // Guarda en MySQL
+            return true;
+        }
+        return false;
+    }
 
 
 }

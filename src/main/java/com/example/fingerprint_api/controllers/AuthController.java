@@ -13,6 +13,11 @@ import java.util.Optional;
 @CrossOrigin(origins = "http://localhost:3000") // Esto permite que Next.js se conecte
 public class AuthController {
 
+    // --- AGREGA ESTO AQUÍ ---
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+    // --
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UsuarioModel loginRequest) {
         Optional<UsuarioModel> user = usuarioRepository.findByUsername(loginRequest.getUsername());
@@ -25,3 +30,4 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario o contraseña incorrectos");
     }
 }
+    
