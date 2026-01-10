@@ -4,8 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, GraduationCap, User, BarChart3, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
-
+import { Home, GraduationCap, User, BarChart3, ChevronLeft, ChevronRight, ChevronDown, Users } from 'lucide-react';
 // Interfaces
 interface SubItem {
     label: string;
@@ -55,11 +54,18 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
                 { label: 'Consulta', path: '/visitantes/historial' } // Ruta de consulta
             ]
         },
-        
-        // "Consulta" general eliminado
-        
-        { id: 'estadistica', label: 'Estadística', icon: <BarChart3 size={20} />, path: '/estadistica' },
-    ];
+    { 
+        id: 'usuarios', 
+        label: 'Usuarios', 
+        icon: <Users size={20} />, 
+        subItems: [
+            { label: 'Nuevo Usuario', path: '/usuarios/nuevo' },
+            { label: 'Lista Usuarios', path: '/usuarios/lista' }
+        ]
+    },
+
+    { id: 'estadistica', label: 'Estadística', icon: <BarChart3 size={20} />, path: '/estadistica' },
+];
 
     const isActive = (path: string) => pathname === path;
 
