@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 @Table(name = "alumnos")
 public class AlumnoModel {
 
-    public AlumnoModel() {}
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_alumno")

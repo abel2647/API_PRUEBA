@@ -30,40 +30,30 @@ public class MultiReaderController {
     public ResponseEntity<?> identificar() {
         AlumnoModel alumno = multiService.identificarDedoAutomatico();
 
-        // 1. ÉXITO: El alumno fue identificado
+        // 1. ÉXITO (Dedo reconocido)
         if (alumno != null && alumno.getPrimerNombre() != null) {
             return ResponseEntity.ok(alumno);
         }
 
-        // 2. TIMEOUT O MALA CALIDAD: El service devolvió objeto vacío (new AlumnoModel)
+        // 2. SILENCIO (Timeout / No pusieron el dedo)
         if (alumno != null && alumno.getPrimerNombre() == null) {
-            // Mandamos un 200 OK pero con un objeto vacío para que el Front siga esperando en silencio
-            return ResponseEntity.ok(alumno);
+            return ResponseEntity.ok(alumno); // El front reintenta solo
         }
 
-        // 3. ERROR REAL: La huella se leyó pero NO hubo coincidencia (null)
-        // Usamos .build() en lugar de .body() para evitar conflictos de tipos
+        // 3. ERROR (Dedo puesto pero desconocido)
+        // ESTO es lo que le dice al Front: "¡Dispárame la ventana roja!"
         return ResponseEntity.status(404).build();
     }
 
     @PostMapping("/enroll-step/{studentId}")
-    public ResponseEntity<?> enrolarPaso(
-            @PathVariable Integer studentId,
-            @RequestBody Map<String, Object> payload
-    ) {
+    public ResponseEntity<?> enrolarPaso(@PathVariable Integer studentId, @RequestBody Map<String, Object> payload) {
         String readerId = (String) payload.get("readerId");
-        // Corrección de seguridad para el casteo de Integer
-        Integer step = payload.get("step") instanceof Integer ? (Integer) payload.get("step") : Integer.parseInt(payload.get("step").toString());
+        Integer step = (Integer) payload.get("step");
 
-        System.out.println("Solicitud de captura: Alumno " + studentId + " Paso: " + step);
-
+        // AQUÍ corregimos el nombre para que use el de tu Service
         String result = multiService.enrolarAlumnoEnBaseDeDatos(readerId, studentId, step);
 
-        if (result.contains("completado") || result.contains("Exito")) {
-            return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.status(400).body(result);
-        }
+        return result.contains("Exito") ? ResponseEntity.ok(result) : ResponseEntity.badRequest().body(result);
     }
 
     @PostMapping("/pre-registrar")

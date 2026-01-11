@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -113,7 +114,8 @@ public class MultiReaderFingerprintService {
                 Fmd fmd = engine.CreateFmd(cr.image, Fmd.Format.ANSI_378_2004);
                 return alumnoRepository.findById(idAlumno).map(a -> {
                     a.setHuellaFmd(fmd.getData());
-                    alumnoRepository.saveAndFlush(a);
+                    a.setUpdateAt(LocalDateTime.now()); // Verifica que el Model tenga la 'd' en Updated
+                    alumnoRepository.save(a); // .save() es más seguro que saveAndFlush()
                     return "Exito: Guardado";
                 }).orElse("Alumno no encontrado");
             }

@@ -27,44 +27,38 @@ export default function VerificacionHuellaPage() {
         }
     }, [isManualModalOpen]);
 
+    const manejarFallo = useCallback(() => {
+        setStatus('error');
+        setShouldVibrate(true); // <--- ESTO activa el color rojo y la vibración del botón
+        console.log("Dedo no reconocido. Esperando interacción del usuario...");
+    }, []);
+
     const iniciarEscucha = useCallback(async () => {
-        // Si ya estamos en éxito o error, no pedimos más
         if (status !== 'idle' || isManualModalOpen) return;
 
         try {
             const res = await fetch('http://localhost:8080/api/v1/multi-fingerprint/identify-auto');
 
+            // AGREGA ESTO: Si no reconoce la huella (404)
+            if (res.status === 404) {
+                manejarFallo();
+                return; // Se detiene aquí y deja la pantalla roja fija
+            }
+
             if (res.ok) {
                 const data = await res.json();
-
                 if (data && data.primerNombre) {
-                    // CASO 1: Huella reconocida
                     setAlumno(data);
                     setStatus('success');
                     setTimeout(resetPage, 4000);
                 } else {
-                    // CASO 2: El sensor terminó el ciclo pero NO encontró a nadie
-                    // Aquí volvemos a llamar a la función silenciosamente para que el sensor se reactive
                     iniciarEscucha();
                 }
-            } else {
-                // CASO 3: El servidor devolvió un error (como el TIMED_OUT)
-                // No llamamos a manejarFallo, simplemente reintentamos la escucha
-                console.log("Ciclo de sensor completado sin lectura, reiniciando...");
-                iniciarEscucha();
             }
         } catch (error) {
-            // CASO 4: Error de red o servidor apagado
-            // Esperamos un poco más para no saturar
-            setTimeout(iniciarEscucha, 3000);
+            setTimeout(iniciarEscucha, 2000);
         }
-    }, [status, isManualModalOpen, resetPage]);
-
-    const manejarFallo = () => {
-        setStatus('error');
-        setShouldVibrate(true);
-        // Sin timeout automático para que el botón de reintento sea necesario
-    };
+    }, [status, isManualModalOpen, resetPage, manejarFallo]);
 
     const procesarEscaneo = async (e: React.FormEvent) => {
         e.preventDefault();
