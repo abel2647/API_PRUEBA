@@ -1,5 +1,6 @@
 package com.example.fingerprint_api.services;
 
+import com.digitalpersona.uareu.*;
 import com.example.fingerprint_api.models.Alumno.AlumnoModel;
 import com.example.fingerprint_api.repositories.AlumnoRepository;
 
@@ -70,7 +71,7 @@ public class AlumnoService {
             alumno.setDeleted(0);
 
             if(alumno.getActivo() == null) {
-                alumno.setActivo("1");
+                alumno.setActivo(Integer.valueOf("1"));
             }
 
             System.out.println("=== ANTES DE SAVE ===");
@@ -248,7 +249,7 @@ public class AlumnoService {
     }
 
     public ArrayList<AlumnoModel> obtenerAlumnosActivos(){
-        return (ArrayList<AlumnoModel>) alumnoRepository.findByActivo("1");
+        return (ArrayList<AlumnoModel>) alumnoRepository.findByActivo(Integer.valueOf("1"));
     }
 
     public ArrayList<AlumnoModel> obtenerAlumnosEliminados(){
@@ -398,18 +399,62 @@ public class AlumnoService {
         }
         return null;
     }
-    // En AlumnoService.java
+
+    /**
+     * 1. REGISTRAR O EDITAR HUELLA
+     * Recibe el ID del alumno y los bytes de la huella (FMD).
+     */
     public boolean guardarHuellaAlumno(Integer idAlumno, byte[] fmdBytes) {
         Optional<AlumnoModel> alumnoOpt = alumnoRepository.findById(idAlumno);
         if (alumnoOpt.isPresent()) {
             AlumnoModel alumno = alumnoOpt.get();
-            alumno.setHuellaFmd(fmdBytes); // Actualiza el campo BLOB
-            alumno.setUpdateAt(LocalDateTime.now());
-            alumnoRepository.save(alumno); // Guarda en MySQL
+            alumno.setHuellaFmd(fmdBytes); // Guardamos la huella
+            alumnoRepository.save(alumno);
             return true;
         }
         return false;
     }
+
+    /**
+     * 2. BUSCAR ALUMNO POR HUELLA (Identificación 1:N)
+     * Recorre los alumnos y compara sus huellas con la capturada.
+     */
+    public Optional<AlumnoModel> identificarAlumno(Fmd huellaCapturada) {
+        try {
+            // Traemos todos los alumnos (o solo los activos para optimizar)
+            ArrayList<AlumnoModel> alumnos = (ArrayList<AlumnoModel>) alumnoRepository.findAll();
+
+            Engine engine = UareUGlobal.GetEngine(); // Motor de comparación del SDK
+
+            for (AlumnoModel alumno : alumnos) {
+                // Si el alumno no tiene huella registrada, saltamos
+                if (alumno.getHuellaFmd() == null) continue;
+
+                // Importamos la huella guardada en BD a formato Fmd
+                Fmd huellaGuardada = UareUGlobal.GetImporter().ImportFmd(
+                        alumno.getHuellaFmd(),
+                        Fmd.Format.ANSI_378_2004,
+                        Fmd.Format.ANSI_378_2004
+                );
+
+                // Comparamos: (HuellaCapturada vs HuellaGuardada)
+                // falsematch_rate: probabilidad de que sea un falso positivo.
+                // Cuanto más bajo sea el número, más exacta es la coincidencia.
+                int falsematch_rate = engine.Compare(huellaCapturada, 0, huellaGuardada, 0);
+
+                // El umbral estándar es 2147 (aprox 0.001% de error).
+                // Si es menor, ¡ES LA PERSONA!
+                if (falsematch_rate < 2147) {
+                    return Optional.of(alumno);
+                }
+            }
+        } catch (UareUException e) {
+            e.printStackTrace();
+        }
+
+        return Optional.empty(); // No se encontró coincidencia
+    }
+
 
 
 }

@@ -5,6 +5,8 @@ import com.example.fingerprint_api.dtos.ValidacionResponseDTO;
 import com.example.fingerprint_api.models.Visitante.CodigoTemporalModel;
 import com.example.fingerprint_api.models.Visitante.RegistroEntradaVisitanteModel;
 import com.example.fingerprint_api.models.Visitante.VisitanteModel;
+import com.example.fingerprint_api.models.Entrada.EntradaModel;
+import com.example.fingerprint_api.repositories.EntradaRepository; // <--- Importar
 import com.example.fingerprint_api.repositories.CodigoTemporalRepository;
 import com.example.fingerprint_api.repositories.RegistroEntradaVisitanteRepository;
 import com.example.fingerprint_api.repositories.VisitanteRepository;
@@ -26,6 +28,9 @@ public class VisitanteService {
 
     @Autowired
     RegistroEntradaVisitanteRepository registroEntradaRepository;
+
+    @Autowired
+    EntradaRepository entradaRepository; // <--- 1. INYECTAR REPOSITORIO
 
     // ==========================================
     // 1. REGISTRO INTELIGENTE (DTO -> 2 TABLAS)
@@ -378,7 +383,9 @@ public class VisitanteService {
                     registro.setCodigoTemporal(codigo);
 
                     // USAMOS LA VARIABLE QUE RECIBIMOS COMO PARÁMETRO
-                    registro.setEntrada(numeroEntrada);
+                   // registro.setEntrada(numeroEntrada);
+                    EntradaModel entradaRef = entradaRepository.getReferenceById(numeroEntrada);
+                    registro.setEntrada(entradaRef.getId());
 
                     registro.setFechaHora(ahora);
 

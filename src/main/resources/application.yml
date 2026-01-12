@@ -3,7 +3,8 @@ spring:
     name: fingerprint-api
   datasource:
     #url: jdbc:mysql://127.0.0.1:3306/prueba_entradas
-    url: jdbc:mysql://localhost:3306/prueba_entradas
+    #Cree una nueva conexion
+    url: jdbc:mysql://localhost:3306/registro_entradas
     username: root
     password: Sayo8090
   jpa:
