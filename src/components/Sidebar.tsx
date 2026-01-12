@@ -64,7 +64,10 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
         ]
     },
 
-    { id: 'estadistica', label: 'Estadística', icon: <BarChart3 size={20} />, path: '/estadistica' },
+    {   id: 'estadistica', 
+        label: 'Estadística', 
+        icon: <BarChart3 size={20} />, 
+        path: '/estadisticas' },
 ];
 
     const isActive = (path: string) => pathname === path;

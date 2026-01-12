@@ -94,7 +94,8 @@ export default function HomePage() {
             icon: <Users className="h-12 w-12 text-purple-500" />,
             path: '/usuarios/lista',
             color: 'hover:border-purple-500'
-        }
+        },
+        
     ];
 
     return (

@@ -70,7 +70,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     if (!isAuthenticated) return null;
 
     // --- LÓGICA DE BLOQUEO DE SECCIONES ---
-    const restrictedRoutes = ['/estudiantes', '/visitantes', '/usuarios', '/consulta'];
+    const restrictedRoutes = ['/estudiantes', '/visitantes', '/usuarios', '/consulta','/estadisticas'];
     const isRestrictedAccess = restrictedRoutes.some(route => pathname.startsWith(route));
     
     // Si quiere entrar a zona restringida y NO es ADMIN
