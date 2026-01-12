@@ -2,6 +2,8 @@ package com.example.fingerprint_api.services;
 
 import com.example.fingerprint_api.models.Alumno.AlumnoModel;
 import com.example.fingerprint_api.models.Asistencia.RegistroAsistenciaModel;
+import com.example.fingerprint_api.models.Entrada.EntradaModel;
+import com.example.fingerprint_api.repositories.EntradaRepository; // <--- Importar
 import com.example.fingerprint_api.repositories.AlumnoRepository;
 import com.example.fingerprint_api.repositories.RegistroAsistenciaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,10 @@ public class AsistenciaService {
     @Autowired
     private AlumnoRepository alumnoRepository;
 
+    //Agregue esto para foranea
+    @Autowired
+    private EntradaRepository entradaRepository; // <--- 1. INYECTAR REPOSITORIO
+
     // DEJA SOLO ESTA VERSIÓN DEL MÉTODO
     @Transactional
     public RegistroAsistenciaModel registrarEntrada(AlumnoModel alumno, Integer numPuerta) {
@@ -30,12 +36,17 @@ public class AsistenciaService {
         // 2. ID Lógica (P1E1, P1E2...)
         String idLogica = "P" + numPuerta + "E" + siguienteEntrada;
 
+        //Agregue esto para foranea
+        EntradaModel entradaRef = entradaRepository.getReferenceById(numPuerta);
+
         // 3. Crear objeto con los 4 parámetros (ID, Alumno, Fecha, Puerta)
         RegistroAsistenciaModel nuevaAsistencia = new RegistroAsistenciaModel(
                 idLogica,
                 alumno,
                 LocalDateTime.now(),
-                numPuerta
+                //numPuerta
+                //Cambie esto para foranea
+                entradaRef.getId() // <--- Pasamos la referencia gestionada por Hibernate
         );
 
         return asistenciaRepository.save(nuevaAsistencia);
