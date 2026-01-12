@@ -49,4 +49,6 @@ public class RegistroAsistenciaModel {
 
     public Integer getIdEntrada() { return idEntrada; }
     public void setIdEntrada(Integer idEntrada) { this.idEntrada = idEntrada; }
+
+
 }

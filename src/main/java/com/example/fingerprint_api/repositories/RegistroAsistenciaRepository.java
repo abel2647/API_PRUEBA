@@ -48,4 +48,16 @@ public interface RegistroAsistenciaRepository extends JpaRepository<RegistroAsis
     List<Map<String, Object>> countPorHoraIntervalo(@Param("inicio") LocalDateTime inicio,
                                                     @Param("fin") LocalDateTime fin);
 
+    // RegistroAsistenciaRepository.java
+    @Query("SELECT r FROM RegistroAsistenciaModel r WHERE " +
+            "(:nombre IS NULL OR r.alumno.primerNombre LIKE %:nombre%) AND " +
+            "(:paterno IS NULL OR r.alumno.apellidoPaterno LIKE %:paterno%) AND " +
+            "(:materno IS NULL OR r.alumno.apellidoMaterno LIKE %:materno%) AND " +
+            "(:matricula IS NULL OR r.alumno.numeroControl LIKE %:matricula%)")
+    List<RegistroAsistenciaModel> filtrarHistorial(
+            @Param("nombre") String nombre,
+            @Param("paterno") String paterno,
+            @Param("materno") String materno,
+            @Param("matricula") String matricula
+    );
 }

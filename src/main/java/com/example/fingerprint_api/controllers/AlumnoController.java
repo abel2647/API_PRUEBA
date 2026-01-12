@@ -1,19 +1,26 @@
 package com.example.fingerprint_api.controllers;
 
+import com.example.fingerprint_api.dtos.HistorialDTO;
 import com.example.fingerprint_api.models.Alumno.AlumnoModel;
 import com.example.fingerprint_api.services.AlumnoService;
+import com.example.fingerprint_api.services.AsistenciaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/alumno")
+@RequestMapping("/api/alumnos")
+@CrossOrigin(origins = "*" )
 public class AlumnoController  {
     @Autowired
     AlumnoService alumnoService;
+
+    @Autowired
+    private AsistenciaService asistenciaService;
     // ========== ENDPOINTS PÚBLICOS ==========
 
     // ========== GET ==========
@@ -52,6 +59,16 @@ public class AlumnoController  {
     @GetMapping("/contar")
     public long contarAlumnos(){
         return alumnoService.contarTotalAlumnos();
+    }
+
+    @GetMapping("/asistencia/historial")
+    public ResponseEntity<List<HistorialDTO>> getHistorial(
+            @RequestParam(required = false) String nombre,
+            @RequestParam(required = false) String paterno,
+            @RequestParam(required = false) String materno,
+            @RequestParam(required = false) String matricula) { // Se cerró el paréntesis correctamente aquí
+
+        return ResponseEntity.ok(asistenciaService.obtenerHistorialCompleto(nombre, paterno, materno, matricula));
     }
 
     // ========== POST ==========

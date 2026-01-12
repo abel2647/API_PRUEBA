@@ -4,7 +4,17 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, GraduationCap, User, BarChart3, ChevronLeft, ChevronRight, ChevronDown, Users } from 'lucide-react';
+import {
+    Home,
+    GraduationCap,
+    User,
+    BarChart3,
+    ChevronLeft,
+    ChevronRight,
+    ChevronDown,
+    Users,
+    CalendarIcon
+} from 'lucide-react';
 // Interfaces
 interface SubItem {
     label: string;
@@ -42,6 +52,7 @@ export const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
             subItems: [
                 { label: 'Registro', path: '/estudiantes' },        // Ruta principal
                 { label: 'Consulta', path: '/consulta/alumnos' }    // Ruta de consulta
+                // Dentro de la lista de sub-ítems de Estudiantes
             ]
         },
         
