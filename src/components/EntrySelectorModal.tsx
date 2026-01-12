@@ -14,7 +14,7 @@ interface EntrySelectorModalProps {
 export const EntrySelectorModal = ({ isOpen, onClose, onSelect }: EntrySelectorModalProps) => {
     
     // Array para generar los botones del 1 al 7
-    const puertas = [1, 2, 3, 4, 5, 6, 7];
+    const puertas = [1, 2, 3, 4, 5, 6];
 
     const handleSelection = (numero: number) => {
         onSelect(numero); // Aquí pasamos el valor (ej: 5) a la variable del padre

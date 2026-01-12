@@ -24,6 +24,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             const logged = localStorage.getItem('isLogged');
             const role = localStorage.getItem('userRole');
 
+            // --- EXCEPCIÓN PARA ACCESO PÚBLICO ---
+            if (pathname === '/login' || pathname === '/acceso-puerta') {
+                setLoading(false);
+                return;
+            }
+
             if (logged === 'true') {
                 // TRUCO PARA EVITAR EL BUCLE INFINITO:
                 // Solo actualizamos el estado si es diferente al actual.
@@ -64,6 +70,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     // 2. Login (Vista limpia)
     if (pathname === '/login') {
         return <div className="min-h-screen bg-gray-900">{children}</div>;
+    }
+
+    // --- VISTAS SIN SIDEBAR NI NAVBAR (Login y Tu Panel de Columnas) ---
+    if (pathname === '/login' || pathname === '/acceso-puerta') {
+        return <div className="min-h-screen bg-slate-100">{children}</div>;
     }
 
     // 3. Protección final (Si cargó, no es login y no está autenticado, no mostrar nada)
