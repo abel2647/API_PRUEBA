@@ -6,6 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
+import java.io.ByteArrayInputStream;
+
 @RestController
 @RequestMapping("/api/dashboard")
 // Permite peticiones desde cualquier origen (ajusta esto si ya tienes una config global de CORS)
@@ -40,4 +46,23 @@ public class DashboardController {
     ) {
         return ResponseEntity.ok(dashboardService.obtenerEstadisticasFiltradas(fecha, horaInicio, horaFin, tipo));
     }
+    @GetMapping("/exportar-excel")
+    public ResponseEntity<InputStreamResource> descargarReporteExcel(
+            @RequestParam(required = false) String fecha,
+            @RequestParam(required = false) String horaInicio,
+            @RequestParam(required = false) String horaFin,
+            @RequestParam(required = false, defaultValue = "TODOS") String tipo
+    ) {
+        ByteArrayInputStream in = dashboardService.generarReporteExcel(fecha, horaInicio, horaFin, tipo);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=reporte_asistencia.xlsx");
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(in));
+    }
+
 }

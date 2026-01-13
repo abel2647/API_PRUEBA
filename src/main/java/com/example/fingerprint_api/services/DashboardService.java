@@ -1,10 +1,22 @@
 package com.example.fingerprint_api.services;
 
 import com.example.fingerprint_api.dtos.DashboardDTO;
+import com.example.fingerprint_api.models.Asistencia.RegistroAsistenciaModel;
+import com.example.fingerprint_api.models.Visitante.RegistroEntradaVisitanteModel;
+import com.example.fingerprint_api.models.Entrada.EntradaModel; // <--- IMPORTANTE
+import com.example.fingerprint_api.repositories.EntradaRepository; // <--- IMPORTANTE
 import com.example.fingerprint_api.repositories.RegistroAsistenciaRepository;
 import com.example.fingerprint_api.repositories.RegistroEntradaVisitanteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,6 +32,9 @@ public class DashboardService {
     @Autowired
     private RegistroEntradaVisitanteRepository visitanteRepo;
 
+    @Autowired
+    private EntradaRepository entradaRepo; // <--- NUEVA INYECCIÓN
+
     /**
      * Método principal para obtener todas las métricas del dashboard según filtros.
      */
@@ -27,116 +42,53 @@ public class DashboardService {
         DashboardDTO dto = new DashboardDTO();
 
         // ----------------------------------------------------------------
-        // 1. CONFIGURACIÓN DE FECHAS Y HORAS (FILTROS)
+        // 0. CONFIGURACIÓN DE FECHAS Y HORAS
         // ----------------------------------------------------------------
-
-        // Fecha: Si es nula, usamos HOY
-        LocalDate fecha = (fechaStr != null && !fechaStr.isEmpty())
-                ? LocalDate.parse(fechaStr)
-                : LocalDate.now();
-
-        // Hora Inicio: Si es nula, usamos 00:00
-        LocalTime horaInicio = (horaInicioStr != null && !horaInicioStr.isEmpty())
-                ? LocalTime.parse(horaInicioStr)
-                : LocalTime.MIN;
-
-        // Hora Fin: Si es nula, usamos 23:59:59
-        LocalTime horaFin = (horaFinStr != null && !horaFinStr.isEmpty())
-                ? LocalTime.parse(horaFinStr)
-                : LocalTime.MAX;
+        LocalDate fecha = (fechaStr != null && !fechaStr.isEmpty()) ? LocalDate.parse(fechaStr) : LocalDate.now();
+        LocalTime horaInicio = (horaInicioStr != null && !horaInicioStr.isEmpty()) ? LocalTime.parse(horaInicioStr) : LocalTime.of(0, 0);
+        LocalTime horaFin = (horaFinStr != null && !horaFinStr.isEmpty()) ? LocalTime.parse(horaFinStr) : LocalTime.of(23, 59, 59);
 
         LocalDateTime inicio = LocalDateTime.of(fecha, horaInicio);
         LocalDateTime fin = LocalDateTime.of(fecha, horaFin);
 
-        // Determinar qué datos consultar
-        boolean incluirAlumnos = "TODOS".equals(tipoPersona) || "ALUMNO".equals(tipoPersona);
-        boolean incluirVisitantes = "TODOS".equals(tipoPersona) || "VISITANTE".equals(tipoPersona);
-
+        boolean incluirAlumnos = tipoPersona.equals("TODOS") || tipoPersona.equals("ALUMNO");
+        boolean incluirVisitantes = tipoPersona.equals("TODOS") || tipoPersona.equals("VISITANTE");
 
         // ----------------------------------------------------------------
-        // 2. CALCULO DE KPIs (TOTALES)
+        // PASO 1: KPIs (Totales Generales)
         // ----------------------------------------------------------------
-        long totalAlumnos = incluirAlumnos ? alumnoRepo.countByFechaHoraBetween(inicio, fin) : 0;
-        long totalVisitantes = incluirVisitantes ? visitanteRepo.countByFechaHoraBetween(inicio, fin) : 0;
-
-        dto.setTotalAlumnosHoy(totalAlumnos);
-        dto.setTotalVisitantesHoy(totalVisitantes);
-
-
-        // ----------------------------------------------------------------
-        // 3. GRÁFICA 1: AFLUENCIA POR PUERTA (1 al 6)
-        // ----------------------------------------------------------------
-        // Inicializamos mapa para asegurar que siempre existan las puertas 1 a 6 (aunque tengan 0)
-        Map<Integer, Map<String, Object>> mapaPuertas = new HashMap<>();
-        for (int i = 1; i <= 6; i++) {
-            Map<String, Object> datos = new HashMap<>();
-            datos.put("puerta", i);
-            datos.put("alumnos", 0);
-            datos.put("visitantes", 0);
-            mapaPuertas.put(i, datos);
-        }
-
-        // Llenar datos de ALUMNOS
         if (incluirAlumnos) {
-            List<Map<String, Object>> res = alumnoRepo.countPorPuertaIntervalo(inicio, fin);
-            for (Map<String, Object> m : res) {
-                Integer puerta = convertirAInt(m.get("puerta"));
-                if (mapaPuertas.containsKey(puerta)) {
-                    mapaPuertas.get(puerta).put("alumnos", convertirAInt(m.get("total")));
-                }
-            }
+            long totalAlumnos = alumnoRepo.countByFechaHoraBetween(inicio, fin);
+            dto.setTotalAlumnosHoy(totalAlumnos);
         }
-
-        // Llenar datos de VISITANTES
         if (incluirVisitantes) {
-            List<Map<String, Object>> res = visitanteRepo.countPorPuertaIntervalo(inicio, fin);
-            for (Map<String, Object> m : res) {
-                Integer puerta = convertirAInt(m.get("puerta"));
-                if (mapaPuertas.containsKey(puerta)) {
-                    mapaPuertas.get(puerta).put("visitantes", convertirAInt(m.get("total")));
-                }
-            }
+            long totalVisitantes = visitanteRepo.countByFechaHoraBetween(inicio, fin);
+            dto.setTotalVisitantesHoy(totalVisitantes);
         }
 
-        // Convertir Mapa a Lista ordenada por número de puerta
-        List<Map<String, Object>> listaPuertas = new ArrayList<>();
-        for (int i = 1; i <= 6; i++) {
-            listaPuertas.add(mapaPuertas.get(i));
-        }
-        dto.setEntradasPorPuerta(listaPuertas);
-
-
         // ----------------------------------------------------------------
-        // 4. GRÁFICA 2: TENDENCIA HORARIA (Por Hora)
+        // PASO 2: GRÁFICA DE LÍNEAS (Por Hora)
         // ----------------------------------------------------------------
-        // Usamos TreeMap para que las horas se ordenen automáticamente (07, 08, 09...)
         Map<Integer, Map<String, Object>> mapaHoras = new TreeMap<>();
-
-        int hInicioInt = horaInicio.getHour();
-        int hFinInt = horaFin.getHour();
-
-        // Inicializar todas las horas del rango con 0
-        for (int h = hInicioInt; h <= hFinInt; h++) {
-            Map<String, Object> datos = new HashMap<>();
-            datos.put("hora", String.format("%02d:00", h)); // Formato "07:00"
-            datos.put("alumnos", 0);
-            datos.put("visitantes", 0);
-            mapaHoras.put(h, datos);
+        // Inicializar las 24 horas en 0
+        for (int i = 0; i < 24; i++) {
+            Map<String, Object> dato = new HashMap<>();
+            dato.put("hora", String.format("%02d:00", i));
+            dato.put("alumnos", 0);
+            dato.put("visitantes", 0);
+            mapaHoras.put(i, dato);
         }
 
-        // Llenar datos de ALUMNOS por Hora
         if (incluirAlumnos) {
             List<Map<String, Object>> res = alumnoRepo.countPorHoraIntervalo(inicio, fin);
             for (Map<String, Object> m : res) {
                 Integer hora = convertirAInt(m.get("hora"));
-                // Solo insertamos si la hora está dentro del rango filtrado
                 if (mapaHoras.containsKey(hora)) {
                     mapaHoras.get(hora).put("alumnos", convertirAInt(m.get("total")));
                 }
             }
         }
 
-        // Llenar datos de VISITANTES por Hora
         if (incluirVisitantes) {
             List<Map<String, Object>> res = visitanteRepo.countPorHoraIntervalo(inicio, fin);
             for (Map<String, Object> m : res) {
@@ -146,12 +98,71 @@ public class DashboardService {
                 }
             }
         }
-
-        // Convertir a Lista
         dto.setAsistenciaSemanal(new ArrayList<>(mapaHoras.values()));
+
+        // ----------------------------------------------------------------
+        // PASO 3: GRÁFICA DE BARRAS (TODAS LAS PUERTAS EXISTENTES)
+        // ----------------------------------------------------------------
+
+        // A. Traer TODAS las puertas de la base de datos (Ej. 1, 2, 3, 4, 5, 6)
+        List<EntradaModel> todasLasPuertas = entradaRepo.findAll();
+
+        // B. Mapa para sumarizar. Clave = ID Puerta (String), Valor = Total acumulado
+        Map<String, Integer> conteoPorPuerta = new HashMap<>();
+
+        // C. Inicializar TODAS las puertas en 0
+        for (EntradaModel puerta : todasLasPuertas) {
+            conteoPorPuerta.put(String.valueOf(puerta.getId()), 0);
+        }
+
+        // D. Sumar ALUMNOS (si aplica)
+        if (incluirAlumnos) {
+            List<Map<String, Object>> resAlumnos = alumnoRepo.countPorPuertaIntervalo(inicio, fin);
+            for (Map<String, Object> m : resAlumnos) {
+                String puertaId = String.valueOf(m.get("puerta"));
+                Integer cantidad = convertirAInt(m.get("total"));
+
+                if (conteoPorPuerta.containsKey(puertaId)) {
+                    conteoPorPuerta.put(puertaId, conteoPorPuerta.get(puertaId) + cantidad);
+                }
+            }
+        }
+
+        // E. Sumar VISITANTES (si aplica)
+        if (incluirVisitantes) {
+            List<Map<String, Object>> resVisitantes = visitanteRepo.countPorPuertaIntervalo(inicio, fin);
+            for (Map<String, Object> m : resVisitantes) {
+                String puertaId = String.valueOf(m.get("puerta"));
+                Integer cantidad = convertirAInt(m.get("total"));
+
+                if (conteoPorPuerta.containsKey(puertaId)) {
+                    conteoPorPuerta.put(puertaId, conteoPorPuerta.get(puertaId) + cantidad);
+                }
+            }
+        }
+
+        // F. Construir la lista final iterando sobre las puertas ORIGINALES para mantener orden
+        List<Map<String, Object>> listaPuertas = new ArrayList<>();
+
+        for (EntradaModel puerta : todasLasPuertas) {
+            Map<String, Object> item = new HashMap<>();
+            String idStr = String.valueOf(puerta.getId());
+
+            // Etiqueta para la gráfica
+            item.put("puerta", "Puerta " + idStr);
+            // Valor (será 0 si no hubo nadie, o la suma si hubo)
+            item.put("total", conteoPorPuerta.get(idStr));
+
+            listaPuertas.add(item);
+        }
+
+        dto.setEntradasPorPuerta(listaPuertas);
 
         return dto;
     }
+
+
+    /**
 
     /**
      * Método auxiliar para convertir resultados de JPA (que pueden ser Long, BigInteger, etc.) a Integer seguro.
@@ -165,6 +176,105 @@ public class DashboardService {
             return Integer.parseInt(obj.toString());
         } catch (NumberFormatException e) {
             return 0;
+        }
+    }
+
+    //METODO PARA DESCARGA EN EXCEL
+    public ByteArrayInputStream generarReporteExcel(String fechaStr, String horaInicioStr, String horaFinStr, String tipoPersona) {
+        // 1. Configurar Fechas (Igual que antes)
+        LocalDate fecha = (fechaStr != null && !fechaStr.isEmpty()) ? LocalDate.parse(fechaStr) : LocalDate.now();
+        LocalTime horaInicio = (horaInicioStr != null && !horaInicioStr.isEmpty()) ? LocalTime.parse(horaInicioStr) : LocalTime.of(0, 0);
+        LocalTime horaFin = (horaFinStr != null && !horaFinStr.isEmpty()) ? LocalTime.parse(horaFinStr) : LocalTime.of(23, 59, 59);
+
+        LocalDateTime inicio = LocalDateTime.of(fecha, horaInicio);
+        LocalDateTime fin = LocalDateTime.of(fecha, horaFin);
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            // Estilo Global para Encabezados (Negrita)
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+            // -----------------------------------------------------------
+            // HOJA 1: ALUMNOS
+            // -----------------------------------------------------------
+            if (tipoPersona.equals("TODOS") || tipoPersona.equals("ALUMNO")) {
+                Sheet sheetAlumnos = workbook.createSheet("Alumnos");
+
+                // Encabezados Específicos de Alumnos
+                String[] headersAlumnos = {"Nombre", "Apellido Paterno", "Apellido Materno", "No. Control", "Carrera", "Fecha y Hora Entrada"};
+                Row headerRow = sheetAlumnos.createRow(0);
+
+                for (int i = 0; i < headersAlumnos.length; i++) {
+                    Cell cell = headerRow.createCell(i);
+                    cell.setCellValue(headersAlumnos[i]);
+                    cell.setCellStyle(headerStyle);
+                }
+
+                // Llenar Datos
+                List<RegistroAsistenciaModel> alumnos = alumnoRepo.findByFechaHoraBetween(inicio, fin);
+                int rowIdx = 1;
+
+                for (RegistroAsistenciaModel reg : alumnos) {
+                    Row row = sheetAlumnos.createRow(rowIdx++);
+                    row.createCell(0).setCellValue(reg.getAlumno().getPrimerNombre());
+                    row.createCell(1).setCellValue(reg.getAlumno().getApellidoPaterno());
+                    row.createCell(2).setCellValue(reg.getAlumno().getApellidoMaterno());
+                    row.createCell(3).setCellValue(reg.getAlumno().getNumeroControl());
+                    row.createCell(4).setCellValue(reg.getAlumno().getCarreraClave());
+                    row.createCell(5).setCellValue(reg.getFechaHora().format(formatter));
+                }
+
+                // Autoajustar columnas
+                for(int i=0; i<headersAlumnos.length; i++) sheetAlumnos.autoSizeColumn(i);
+            }
+
+            // -----------------------------------------------------------
+            // HOJA 2: VISITANTES
+            // -----------------------------------------------------------
+            if (tipoPersona.equals("TODOS") || tipoPersona.equals("VISITANTE")) {
+                Sheet sheetVisitantes = workbook.createSheet("Visitantes");
+
+                // Encabezados Específicos de Visitantes
+                String[] headersVisitantes = {"Nombre", "Apellido Paterno", "Apellido Materno", "Asunto", "Acompañantes", "Fecha y Hora Entrada"};
+                Row headerRow = sheetVisitantes.createRow(0);
+
+                for (int i = 0; i < headersVisitantes.length; i++) {
+                    Cell cell = headerRow.createCell(i);
+                    cell.setCellValue(headersVisitantes[i]);
+                    cell.setCellStyle(headerStyle);
+                }
+
+                // Llenar Datos
+                List<RegistroEntradaVisitanteModel> visitantes = visitanteRepo.findByFechaHoraBetween(inicio, fin);
+                int rowIdx = 1;
+
+                for (RegistroEntradaVisitanteModel reg : visitantes) {
+                    var vis = reg.getCodigoTemporal().getVisitante();
+                    var motivo = reg.getCodigoTemporal().getAsunto();
+                    var acomp = reg.getCodigoTemporal().getNumeroAcompañantes();
+
+                    Row row = sheetVisitantes.createRow(rowIdx++);
+                    row.createCell(0).setCellValue(vis.getPrimerNombre());
+                    row.createCell(1).setCellValue(vis.getApellidoPaterno());
+                    row.createCell(2).setCellValue(vis.getApellidoMaterno());
+                    row.createCell(3).setCellValue(motivo);
+                    row.createCell(4).setCellValue(acomp != null ? acomp : 0);
+                    row.createCell(5).setCellValue(reg.getFechaHora().format(formatter));
+                }
+
+                // Autoajustar columnas
+                for(int i=0; i<headersVisitantes.length; i++) sheetVisitantes.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            throw new RuntimeException("Error al generar Excel: " + e.getMessage());
         }
     }
 }

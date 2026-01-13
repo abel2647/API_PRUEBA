@@ -48,4 +48,6 @@ public interface RegistroAsistenciaRepository extends JpaRepository<RegistroAsis
     List<Map<String, Object>> countPorHoraIntervalo(@Param("inicio") LocalDateTime inicio,
                                                     @Param("fin") LocalDateTime fin);
 
+    // Agrega este método para obtener la lista completa
+    List<RegistroAsistenciaModel> findByFechaHoraBetween(LocalDateTime inicio, LocalDateTime fin);
 }

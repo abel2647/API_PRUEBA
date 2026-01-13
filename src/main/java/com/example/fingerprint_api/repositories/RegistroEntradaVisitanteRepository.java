@@ -37,4 +37,7 @@ public interface RegistroEntradaVisitanteRepository extends JpaRepository<Regist
     List<Map<String, Object>> countPorHoraIntervalo(@Param("inicio") LocalDateTime inicio,
                                                     @Param("fin") LocalDateTime fin);
 
+    // Agrega este método para obtener la lista completa
+    List<RegistroEntradaVisitanteModel> findByFechaHoraBetween(LocalDateTime inicio, LocalDateTime fin);
+
 }
