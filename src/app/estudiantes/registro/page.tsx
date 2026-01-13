@@ -38,31 +38,48 @@ export default function RegistroEstudiantesPage() {
     ];
 
     const iniciarCaptura = async () => {
+        // 1. Validación básica
         if (!form.primerNombre || !form.carreraClave) {
-            return Swal.fire('Atención', 'Nombre y Carrera son obligatorios antes de la huella', 'warning');
+            return Swal.fire('Atención', 'Nombre y Carrera son obligatorios', 'warning');
         }
 
         try {
-            const resRegistro = await fetch('http://localhost:8080/api/v1/multi-fingerprint/pre-registrar', {
+            // 2. Pre-registrar al alumno (Guardar en BD)
+            const resRegistro = await fetch('http://localhost:8080/api/alumnos', { // Verifica que esta sea tu ruta POST
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
             });
 
-            const alumnoCreado = await resRegistro.json();
-            setForm({ ...form, idAlumno: alumnoCreado.id });
+            if (!resRegistro.ok) {
+                throw new Error("Error en el servidor al registrar datos");
+            }
 
+            const alumnoCreado = await resRegistro.json();
+
+            // CORRECCIÓN AQUÍ: Usamos id_alumno que es como viene de tu AlumnoModel
+            const idGenerado = alumnoCreado.id_alumno;
+
+            if (!idGenerado) {
+                console.error("El backend no devolvió id_alumno:", alumnoCreado);
+                return Swal.fire('Error', 'El servidor no generó un ID válido', 'error');
+            }
+
+            // Actualizamos el formulario con el ID para el siguiente paso (la huella)
+            setForm({ ...form, idAlumno: idGenerado });
+
+            // 3. Buscar lectores
             const resLector = await fetch('http://localhost:8080/api/v1/multi-fingerprint/auto-select');
             const readers = await resLector.json();
 
-            if (readers.length > 0) {
+            if (readers && readers.length > 0) {
                 setReaderId(readers[0]);
-                setIsModalOpen(true);
+                setIsModalOpen(true); // Abrir el modal para poner el dedo
             } else {
                 Swal.fire('Lector no hallado', 'Conecta el dispositivo USB', 'error');
             }
         } catch (error) {
-            Swal.fire('Error', 'No se pudo iniciar el pre-registro', 'error');
+            console.error("Error en iniciarCaptura:", error);
         }
     };
 

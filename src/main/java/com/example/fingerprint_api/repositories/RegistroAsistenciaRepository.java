@@ -49,15 +49,19 @@ public interface RegistroAsistenciaRepository extends JpaRepository<RegistroAsis
                                                     @Param("fin") LocalDateTime fin);
 
     // RegistroAsistenciaRepository.java
-    @Query("SELECT r FROM RegistroAsistenciaModel r WHERE " +
-            "(:nombre IS NULL OR r.alumno.primerNombre LIKE %:nombre%) AND " +
-            "(:paterno IS NULL OR r.alumno.apellidoPaterno LIKE %:paterno%) AND " +
-            "(:materno IS NULL OR r.alumno.apellidoMaterno LIKE %:materno%) AND " +
-            "(:matricula IS NULL OR r.alumno.numeroControl LIKE %:matricula%)")
-    List<RegistroAsistenciaModel> filtrarHistorial(
-            @Param("nombre") String nombre,
-            @Param("paterno") String paterno,
-            @Param("materno") String materno,
-            @Param("matricula") String matricula
-    );
-}
+        // ... otros métodos (count, etc) ...
+
+        @Query("SELECT r FROM RegistroAsistenciaModel r WHERE " +
+                "(:nombre IS NULL OR LOWER(r.alumno.primerNombre) LIKE LOWER(CONCAT('%', :nombre, '%'))) AND " +
+                "(:paterno IS NULL OR LOWER(r.alumno.apellidoPaterno) LIKE LOWER(CONCAT('%', :paterno, '%'))) AND " +
+                "(:matricula IS NULL OR r.alumno.numeroControl LIKE CONCAT('%', :matricula, '%')) AND " +
+                "(:fecha IS NULL OR CAST(r.fechaHora AS date) = CAST(:fecha AS date))")
+        List<RegistroAsistenciaModel> filtrarHistorial(
+                @Param("nombre") String nombre,
+                @Param("paterno") String paterno,
+                @Param("matricula") String matricula,
+                @Param("fecha") String fecha
+        );
+
+    List<RegistroAsistenciaModel> findByFechaHoraBetween(LocalDateTime inicio, LocalDateTime fin);
+    }

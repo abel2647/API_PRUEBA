@@ -2,144 +2,126 @@ package com.example.fingerprint_api.controllers;
 
 import com.example.fingerprint_api.dtos.HistorialDTO;
 import com.example.fingerprint_api.models.Alumno.AlumnoModel;
+import com.example.fingerprint_api.models.Asistencia.RegistroAsistenciaModel;
 import com.example.fingerprint_api.services.AlumnoService;
 import com.example.fingerprint_api.services.AsistenciaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/alumnos")
-@CrossOrigin(origins = "*" )
-public class AlumnoController  {
+@CrossOrigin(origins = "*")
+public class AlumnoController {
+
     @Autowired
-    AlumnoService alumnoService;
+    private AlumnoService alumnoService;
 
     @Autowired
     private AsistenciaService asistenciaService;
-    // ========== ENDPOINTS PÚBLICOS ==========
 
-    // ========== GET ==========
+    // ==========================================
+    //              ENDPOINTS GET
+    // ==========================================
 
     @GetMapping
-    public ArrayList<AlumnoModel> obtenerAlumnos(){
+    public ArrayList<AlumnoModel> obtenerAlumnos() {
         return alumnoService.obtenerAlumnos();
     }
 
     @GetMapping("/{uuid}/{id}")
-    public ResponseEntity<AlumnoModel> obtenerAlumno(@PathVariable String uuid, @PathVariable Integer id){
+    public ResponseEntity<AlumnoModel> obtenerAlumno(@PathVariable String uuid, @PathVariable Integer id) {
         Optional<AlumnoModel> alumno = alumnoService.obtenerAlumnoPorIdYUuid(id, uuid);
         return alumno.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/buscar/{nombre}")
-    public ArrayList<AlumnoModel> buscarAlumnosPorNombre(@PathVariable String nombre){
-        return alumnoService.buscarAlumnosPorNombre(nombre);
-    }
-
-    @GetMapping("/carrera/{carreraClave}")
-    public ArrayList<AlumnoModel> obtenerAlumnosPorCarrera(@PathVariable String carreraClave){
-        return alumnoService.obtenerAlumnosPorCarrera(carreraClave);
-    }
-
-    @GetMapping("/activos")
-    public ArrayList<AlumnoModel> obtenerAlumnosActivos(){
-        return alumnoService.obtenerAlumnosActivos();
-    }
-
-    @GetMapping("/eliminados")
-    public ArrayList<AlumnoModel> obtenerAlumnosEliminados(){
-        return alumnoService.obtenerAlumnosEliminados();
-    }
-
-    @GetMapping("/contar")
-    public long contarAlumnos(){
-        return alumnoService.contarTotalAlumnos();
     }
 
     @GetMapping("/asistencia/historial")
     public ResponseEntity<List<HistorialDTO>> getHistorial(
             @RequestParam(required = false) String nombre,
             @RequestParam(required = false) String paterno,
-            @RequestParam(required = false) String materno,
-            @RequestParam(required = false) String matricula) { // Se cerró el paréntesis correctamente aquí
+            @RequestParam(required = false) String matricula,
+            @RequestParam(required = false) String fecha) { // <--- Nuevo parámetro
 
-        return ResponseEntity.ok(asistenciaService.obtenerHistorialCompleto(nombre, paterno, materno, matricula));
+        List<HistorialDTO> historial = asistenciaService.obtenerHistorialEstudiantes(nombre, paterno, matricula, fecha);
+        return ResponseEntity.ok(historial);
     }
 
-    // ========== POST ==========
+    @GetMapping("/buscar/{nombre}")
+    public ArrayList<AlumnoModel> buscarAlumnosPorNombre(@PathVariable String nombre) {
+        return alumnoService.buscarAlumnosPorNombre(nombre);
+    }
+
+    @GetMapping("/contar")
+    public long contarAlumnos() {
+        return alumnoService.contarTotalAlumnos();
+    }
+
+    // ==========================================
+    //              ENDPOINTS POST
+    // ==========================================
 
     @PostMapping
-    public AlumnoModel registrarAlumno(@RequestBody AlumnoModel alumno){
-        return alumnoService.registrarAlumno(alumno);
+    public ResponseEntity<AlumnoModel> registrarAlumno(@RequestBody AlumnoModel alumno){
+        try {
+            AlumnoModel nuevo = alumnoService.registrarAlumno(alumno);
+            return ResponseEntity.ok(nuevo);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
-    // ========== PUT ==========
+    /**
+     * Endpoint que recibe el JSON del ValidationAlumnoModal (Frontend)
+     * Payload esperado: { "numeroControl": "...", "idEntrada": 1 }
+     */
+
+    @PostMapping("/registrar-asistencia")
+    @CrossOrigin(origins = "*") // Crucial para evitar el "Failed to fetch"
+    public ResponseEntity<?> registrarAsistenciaManual(@RequestBody Map<String, Object> payload) {
+        try {
+            // Extraemos las llaves que manda el JSON del front
+            String numeroControl = (String) payload.get("numeroControl");
+            Object idObj = payload.get("idEntrada");
+            Integer idEntrada = (idObj instanceof String) ? Integer.parseInt((String) idObj) : (Integer) idObj;
+
+            RegistroAsistenciaModel registro = asistenciaService.registrarPorNumeroControl(numeroControl, idEntrada);
+            return ResponseEntity.ok(registro);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    // ==========================================
+    //              ENDPOINTS PUT/DELETE
+    // ==========================================
 
     @PutMapping("/{uuid}/{id}")
-    public ResponseEntity<AlumnoModel> actualizarAlumno(@PathVariable String uuid, @PathVariable Integer id, @RequestBody AlumnoModel alumno){
-        AlumnoModel alumnoActualizado = alumnoService.actualizarAlumnoSeguro(id, uuid, alumno);
-        return alumnoActualizado != null ? ResponseEntity.ok(alumnoActualizado) : ResponseEntity.notFound().build();
-    }
+    public ResponseEntity<?> actualizarAlumnoSeguro(
+            @PathVariable String uuid,
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> payload) { // Usamos Map para recibir cualquier campo
 
-    @PutMapping("/restaurar/{uuid}/{id}")
-    public ResponseEntity<String> restaurarAlumno(@PathVariable String uuid, @PathVariable Integer id){
-        boolean restaurado = alumnoService.restaurarAlumnoSeguro(id, uuid);
-        return restaurado ? ResponseEntity.ok("Alumno restaurado") : ResponseEntity.notFound().build();
+        try {
+            AlumnoModel alumno = alumnoService.actualizarAlumnoDesdeMapa(id, uuid, payload);
+            if (alumno != null) {
+                return ResponseEntity.ok(alumno);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Alumno o UUID no coinciden");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        }
     }
-
-    // ========== DELETE ==========
 
     @DeleteMapping("/{uuid}/{id}")
-    public ResponseEntity<String> eliminarAlumno(@PathVariable String uuid, @PathVariable Integer id){
+    public ResponseEntity<String> eliminarAlumno(@PathVariable String uuid, @PathVariable Integer id) {
         boolean eliminado = alumnoService.eliminarAlumnoSeguro(id, uuid);
         return eliminado ? ResponseEntity.ok("Alumno eliminado") : ResponseEntity.notFound().build();
     }
-
-    @DeleteMapping("/soft/{uuid}/{id}")
-    public ResponseEntity<String> eliminarAlumnoSuave(@PathVariable String uuid, @PathVariable Integer id){
-        boolean eliminado = alumnoService.eliminarAlumnoSuaveSeguro(id, uuid);
-        return eliminado ? ResponseEntity.ok("Alumno eliminado (soft)") : ResponseEntity.notFound().build();
-    }
-
-   /*
-    ANTIGUa}AS RUTAS
-    @GetMapping()
-    public ArrayList<AlumnoModel> obtenerAlumnos(){
-        return alumnoService.obtenerAlumnos();
-    }
-
-    @PostMapping()
-    public AlumnoModel registrarAlumno(@RequestBody AlumnoModel alumno){
-        return this.alumnoService.registrarAlumno(alumno);
-    }
-
-    @DeleteMapping(path = "/{id}")
-    public String eliminarPorId(@PathVariable("id") Integer id){
-        boolean ok = this.alumnoService.eliminarAlumno(id);
-        if(ok){
-            return "Alumno eliminado con id"+id;
-        }else {
-            return "Alumno no eliminado con id"+id;
-        }
-    }
-
-    @PutMapping(path = "/{id}")
-    public ResponseEntity<AlumnoModel> actualizarAlumno(
-            @PathVariable("id") Integer id,
-            @RequestBody AlumnoModel alumnoActualizado) {
-
-        AlumnoModel alumno = this.alumnoService.actualizarAlumno(id, alumnoActualizado);
-
-        if (alumno != null) {
-            return ResponseEntity.ok(alumno);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }*/
-
 }

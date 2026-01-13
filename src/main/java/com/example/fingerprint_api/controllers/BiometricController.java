@@ -40,4 +40,13 @@ public class BiometricController {
         deviceManager.setMode(FingerprintDeviceManager.DeviceMode.IDENTIFICATION, null);
         return ResponseEntity.ok("Lector devuelto a modo IDENTIFICACIÓN.");
     }
+
+    @GetMapping("/enroll/{id}")
+    public ResponseEntity<?> enroll(@PathVariable Integer id) {
+        if (!alumnoService.existeAlumno(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        // Lógica para encender el lector y esperar el dedo...
+        return ResponseEntity.ok("Esperando huella...");
+    }
 }

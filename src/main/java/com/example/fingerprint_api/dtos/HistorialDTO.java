@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 public class HistorialDTO {
     private String id; // Cambiado a String para que coincida con tu base de datos (P1E1)
+    private Integer alumno_id; // <--- NUEVO: ID real del alumno
+    private String uuid;
     private String nombreCompleto;
     private String matricula;
     private String carrera;
@@ -25,6 +27,12 @@ public class HistorialDTO {
     }
 
     // Getters y Setters Manuales
+    // Getters y Setters para los nuevos campos
+    public Integer getAlumno_id() { return alumno_id; }
+    public void setAlumno_id(Integer alumno_id) { this.alumno_id = alumno_id; }
+    public String getUuid() { return uuid; }
+    public void setUuid(String uuid) { this.uuid = uuid; }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
