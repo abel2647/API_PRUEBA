@@ -93,9 +93,16 @@ public class MultiReaderFingerprintService {
             }
 
         } catch (UareUException e) {
-            if (e.getMessage().contains("TIMED_OUT")) {
-                return new AlumnoModel(); // Caso: Nadie puso el dedo (Reintento Silencioso)
+            // Obtenemos el mensaje en una variable
+            String mensajeError = e.getMessage();
+
+            // Validamos que no sea nulo Y que contenga el timeout
+            if (mensajeError != null && mensajeError.contains("TIMED_OUT")) {
+                return new AlumnoModel(); // Reintento silencioso si nadie puso el dedo
             }
+
+            // Si el mensaje es nulo o es otro error, logueamos y retornamos null
+            logger.error("Error de hardware: " + (mensajeError != null ? mensajeError : "Mensaje nulo del SDK"));
             return null;
         } catch (Exception e) {
             return null;
