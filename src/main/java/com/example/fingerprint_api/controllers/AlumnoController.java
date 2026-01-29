@@ -57,6 +57,8 @@ public class AlumnoController {
         return alumnoService.buscarAlumnosPorNombre(nombre);
     }
 
+
+
     @GetMapping("/contar")
     public long contarAlumnos() {
         return alumnoService.contarTotalAlumnos();

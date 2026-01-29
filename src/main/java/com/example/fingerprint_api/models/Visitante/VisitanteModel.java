@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Visitante") // Asegúrate que coincida con tu BD (mayúsculas/minúsculas)
+@Table(name = "visitante") // Asegúrate que coincida con tu BD (mayúsculas/minúsculas)
 public class VisitanteModel {
 
     @Id

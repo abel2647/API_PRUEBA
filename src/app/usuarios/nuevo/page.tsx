@@ -9,7 +9,7 @@ export default function NuevoUsuarioPage() {
     const [formData, setFormData] = useState({
         username: '',
         password: '',
-        rol: 'EMPLEADO' // Valor por defecto
+        rol: 'ADMIN' // Valor por defecto
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -89,8 +89,8 @@ export default function NuevoUsuarioPage() {
                             className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         >
                             <option value="ADMIN">ADMIN</option>
-                            <option value="EMPLEADO">EMPLEADO</option>
-                            <option value="INVITADO">INVITADO</option>
+                            {/*<option value="EMPLEADO">EMPLEADO</option>
+                            <option value="INVITADO">INVITADO</option>*/}
                         </select>
                     </div>
 

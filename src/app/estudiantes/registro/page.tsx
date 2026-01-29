@@ -25,16 +25,15 @@ export default function RegistroEstudiantesPage() {
 
     // Catálogo con Claves para la Base de Datos
     const CARRERAS = [
-        { nombre: "Ingeniería en Sistemas Computacionales", clave: "ISIC" },
-        { nombre: "Ingeniería Electrónica", clave: "IELC" },
-        { nombre: "Ingeniería Química", clave: "IQUI" },
-        { nombre: "Ingeniería Industrial", clave: "IIND" },
-        { nombre: "Ingeniería Mecánica", clave: "IMEC" },
-        { nombre: "Ingeniería Eléctrica", clave: "IELE" },
-        { nombre: "Ingeniería Civil", clave: "ICIV" },
-        { nombre: "Administración", clave: "IADM" },
-        { nombre: "Contaduría Pública", clave: "CPUB" },
-        { nombre: "Gestión Empresarial", clave: "IGEM" }
+        { nombre: "Ingeniería en Sistemas Computacionales", clave: "L20" },
+        { nombre: "Ingeniería Electrónica", clave: "L10" },
+        { nombre: "Ingeniería Química", clave: "L16" },
+        { nombre: "Ingeniería Industrial", clave: "L13" },
+        { nombre: "Ingeniería Mecánica", clave: "L17" },
+        { nombre: "Ingeniería Eléctrica", clave: "L15" },
+        { nombre: "Ingeniería Civil", clave: "L18" },
+        { nombre: "Licenciatura en Administracion", clave: "L11" },
+        { nombre: "Ingenieria en Gestión Empresarial", clave: "L19" }
     ];
 
     const iniciarCaptura = async () => {
@@ -44,42 +43,46 @@ export default function RegistroEstudiantesPage() {
         }
 
         try {
-            // 2. Pre-registrar al alumno (Guardar en BD)
-            const resRegistro = await fetch('http://localhost:8080/api/alumnos', { // Verifica que esta sea tu ruta POST
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
-            });
+            let idParaHuella = form.idAlumno; // Usamos el ID que tengamos en el estado
 
-            if (!resRegistro.ok) {
-                throw new Error("Error en el servidor al registrar datos");
+            // 2. Solo creamos el registro en BD si NO tenemos un ID todavía (es decir, es la primera vez)
+            if (idParaHuella === 0) {
+                const resRegistro = await fetch('http://localhost:8080/api/alumnos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(form)
+                });
+
+                if (!resRegistro.ok) {
+                    throw new Error("Error en el servidor al registrar datos");
+                }
+
+                const alumnoCreado = await resRegistro.json();
+                idParaHuella = alumnoCreado.id_alumno; // Obtenemos el nuevo ID
+
+                if (!idParaHuella) {
+                    return Swal.fire('Error', 'El servidor no generó un ID válido', 'error');
+                }
+
+                // Guardamos el ID en el estado para que, si damos clic de nuevo, no se duplique
+                setForm(prev => ({ ...prev, idAlumno: idParaHuella }));
+            } else {
+                console.log("Reutilizando registro existente ID:", idParaHuella);
             }
 
-            const alumnoCreado = await resRegistro.json();
-
-            // CORRECCIÓN AQUÍ: Usamos id_alumno que es como viene de tu AlumnoModel
-            const idGenerado = alumnoCreado.id_alumno;
-
-            if (!idGenerado) {
-                console.error("El backend no devolvió id_alumno:", alumnoCreado);
-                return Swal.fire('Error', 'El servidor no generó un ID válido', 'error');
-            }
-
-            // Actualizamos el formulario con el ID para el siguiente paso (la huella)
-            setForm({ ...form, idAlumno: idGenerado });
-
-            // 3. Buscar lectores
+            // 3. Buscar lectores (Esto sigue igual, pero ya seguros de tener un ID único)
             const resLector = await fetch('http://localhost:8080/api/v1/multi-fingerprint/auto-select');
             const readers = await resLector.json();
 
             if (readers && readers.length > 0) {
                 setReaderId(readers[0]);
-                setIsModalOpen(true); // Abrir el modal para poner el dedo
+                setIsModalOpen(true);
             } else {
                 Swal.fire('Lector no hallado', 'Conecta el dispositivo USB', 'error');
             }
         } catch (error) {
             console.error("Error en iniciarCaptura:", error);
+            Swal.fire('Error', 'No se pudo iniciar el proceso de captura', 'error');
         }
     };
 

@@ -38,7 +38,6 @@ public class MultiReaderFingerprintService {
         validReaders.clear();
     }
 
-    // Cambia 'public synchronized void' por 'public synchronized List<String>'
     public synchronized List<String> refreshConnectedReaders() {
         try {
             ReaderCollection readers = UareUGlobal.GetReaderCollection();
@@ -52,11 +51,11 @@ public class MultiReaderFingerprintService {
         } catch (UareUException e) {
             logger.error("Error SDK: " + e.getMessage());
         }
-        // Agrega esta línea al final para devolver las llaves (nombres) del mapa
         return new ArrayList<>(validReaders.keySet());
     }
 
-    public AlumnoModel identificarDedoAutomatico() {
+    // --- CORRECCIÓN AQUÍ: Agregamos el parámetro numeroEntrada ---
+    public AlumnoModel identificarDedoAutomatico(Integer numeroEntrada) {
         if (validReaders.isEmpty()) refreshConnectedReaders();
         Reader reader = validReaders.values().stream().findFirst().orElse(null);
 
@@ -65,7 +64,7 @@ public class MultiReaderFingerprintService {
         try {
             try { reader.CancelCapture(); } catch (Exception e) {}
 
-            logger.info(">>> Lector encendido: Esperando dedo (5 segundos)...");
+            logger.info(">>> Lector encendido: Esperando dedo (5 segundos) para Puerta " + numeroEntrada + "...");
             Reader.CaptureResult cr = reader.Capture(Fid.Format.ANSI_381_2004, Reader.ImageProcessing.IMG_PROC_DEFAULT, 500, 5000);
 
             if (cr != null && cr.quality == Reader.CaptureQuality.GOOD) {
@@ -80,29 +79,26 @@ public class MultiReaderFingerprintService {
                             int score = engine.Compare(fmdCapturado, 0, fmdBaseDatos, 0);
 
                             if (score < 21474) { // Match!
-                                asistenciaService.registrarEntrada(alumno, 1);
+                                // --- CORRECCIÓN: Usamos la variable, no el 1 fijo ---
+                                asistenciaService.registrarEntrada(alumno, numeroEntrada);
+                                logger.info("Asistencia registrada: " + alumno.getPrimerNombre() + " en puerta " + numeroEntrada);
                                 return alumno;
                             }
                         } catch (Exception e) { continue; }
                     }
                 }
                 logger.info("No hubo coincidencia en BD.");
-                return null; // Caso: Dedo puesto pero NO reconocido (Ventana Roja)
+                return null;
             } else {
-                return new AlumnoModel(); // Caso: Mala calidad (Reintento Silencioso)
+                return new AlumnoModel();
             }
 
         } catch (UareUException e) {
-            // Obtenemos el mensaje en una variable
             String mensajeError = e.getMessage();
-
-            // Validamos que no sea nulo Y que contenga el timeout
             if (mensajeError != null && mensajeError.contains("TIMED_OUT")) {
-                return new AlumnoModel(); // Reintento silencioso si nadie puso el dedo
+                return new AlumnoModel();
             }
-
-            // Si el mensaje es nulo o es otro error, logueamos y retornamos null
-            logger.error("Error de hardware: " + (mensajeError != null ? mensajeError : "Mensaje nulo del SDK"));
+            logger.error("Error de hardware: " + mensajeError );
             return null;
         } catch (Exception e) {
             return null;
@@ -121,8 +117,8 @@ public class MultiReaderFingerprintService {
                 Fmd fmd = engine.CreateFmd(cr.image, Fmd.Format.ANSI_378_2004);
                 return alumnoRepository.findById(idAlumno).map(a -> {
                     a.setHuellaFmd(fmd.getData());
-                    a.setUpdateAt(LocalDateTime.now()); // Verifica que el Model tenga la 'd' en Updated
-                    alumnoRepository.save(a); // .save() es más seguro que saveAndFlush()
+                    a.setUpdateAt(LocalDateTime.now());
+                    alumnoRepository.save(a);
                     return "Exito: Guardado";
                 }).orElse("Alumno no encontrado");
             }

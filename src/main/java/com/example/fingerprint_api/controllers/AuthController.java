@@ -22,7 +22,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UsuarioModel loginRequest) {
         Optional<UsuarioModel> user = usuarioRepository.findByUsername(loginRequest.getUsername());
-        if (user.isPresent() && user.get().getPassword().equals(loginRequest.getPassword())) {
+        if (user.isPresent() &&
+                user.get().getUsername().equals(loginRequest.getUsername()) &&
+                user.get().getPassword().equals(loginRequest.getPassword())) {
+
             return ResponseEntity.ok(user.get());
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario o contraseña incorrectos");

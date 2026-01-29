@@ -26,33 +26,42 @@ public class MultiReaderController {
         return multiService.refreshConnectedReaders();
     }
 
+    // ==========================================
+    // MÉTODO RESTAURADO CON TU LÓGICA ORIGINAL
+    // ==========================================
     @GetMapping("/identify-auto")
-    public ResponseEntity<?> identificar() {
-        AlumnoModel alumno = multiService.identificarDedoAutomatico();
+    public ResponseEntity<?> identificar(
+            // Agregamos esto para recibir la puerta, si no llega usa 1
+            @RequestParam(name = "numeroEntrada", defaultValue = "1") Integer numeroEntrada
+    ) {
+        // 1. Llamamos al servicio pasando la puerta
+        AlumnoModel alumno = multiService.identificarDedoAutomatico(numeroEntrada);
 
-        // 1. ÉXITO (Dedo reconocido)
+        // --- TU LÓGICA ORIGINAL ---
+
+        // CASO 1: ÉXITO (Dedo reconocido y alumno encontrado)
         if (alumno != null && alumno.getPrimerNombre() != null) {
+            // Devolvemos el objeto completo como te gusta
             return ResponseEntity.ok(alumno);
         }
 
-        // 2. SILENCIO (Timeout / No pusieron el dedo)
+        // CASO 2: SILENCIO (Timeout o espera agotada sin poner dedo)
+        // Devolvemos un 200 OK con objeto vacío para que el Front reintente sin error
         if (alumno != null && alumno.getPrimerNombre() == null) {
-            return ResponseEntity.ok(alumno); // El front reintenta solo
+            return ResponseEntity.ok(alumno);
         }
 
-        // 3. ERROR (Dedo puesto pero desconocido)
-        // ESTO es lo que le dice al Front: "¡Dispárame la ventana roja!"
+        // CASO 3: ERROR REAL (Puso el dedo pero no existe en BD)
+        // Esto dispara la alerta roja en el frontend
         return ResponseEntity.status(404).build();
     }
+    // ==========================================
 
     @PostMapping("/enroll-step/{studentId}")
     public ResponseEntity<?> enrolarPaso(@PathVariable Integer studentId, @RequestBody Map<String, Object> payload) {
         String readerId = (String) payload.get("readerId");
         Integer step = (Integer) payload.get("step");
-
-        // AQUÍ corregimos el nombre para que use el de tu Service
         String result = multiService.enrolarAlumnoEnBaseDeDatos(readerId, studentId, step);
-
         return result.contains("Exito") ? ResponseEntity.ok(result) : ResponseEntity.badRequest().body(result);
     }
 
@@ -64,7 +73,6 @@ public class MultiReaderController {
         alumno.setVersion(1);
         alumno.setUuid(java.util.UUID.randomUUID().toString());
         alumno.setCreatedAt(java.time.LocalDateTime.now());
-
         AlumnoModel nuevo = alumnoRepository.save(alumno);
         return ResponseEntity.ok(nuevo);
     }
@@ -80,12 +88,10 @@ public class MultiReaderController {
             alumno.setNumTelefono(datos.getNumTelefono());
             alumno.setCarreraClave(datos.getCarreraClave());
             alumno.setUsuario(datos.getUsuario() != null ? datos.getUsuario() : "ADMIN_SISTEMA");
-
             alumno.setActivo(1);
             alumno.setDeleted(0);
             alumno.setVersion(datos.getVersion() != null ? datos.getVersion() + 1 : 1);
             alumno.setUpdateAt(java.time.LocalDateTime.now());
-
             alumnoRepository.saveAndFlush(alumno);
             return ResponseEntity.ok("Registro guardado exitosamente");
         }).orElse(ResponseEntity.status(404).body("Error: No se encontró el registro."));

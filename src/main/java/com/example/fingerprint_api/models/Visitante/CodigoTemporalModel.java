@@ -24,9 +24,13 @@ public class CodigoTemporalModel {
     @Column(name = "fecha_expiracion")
     private LocalDateTime fechaExpiracion;
 
+
+    @Column(name = "activo")
+    private Integer activo;
+
+
     // Relación con Visitante (Muchas visitas pueden ser de 1 persona)
-    @ManyToOne
-    @JoinColumn(name = "visitante_id", nullable = false)
+    @ManyToOne(cascade = CascadeType.MERGE)    @JoinColumn(name = "visitante_id", nullable = false)
     private VisitanteModel visitante;
 
     // --- Getters y Setters ---
@@ -47,4 +51,8 @@ public class CodigoTemporalModel {
 
     public VisitanteModel getVisitante() { return visitante; }
     public void setVisitante(VisitanteModel visitante) { this.visitante = visitante; }
+
+    // ... getters y setters ...
+    public Integer getActivo() { return activo; }
+    public void setActivo(Integer activo) { this.activo = activo; }
 }

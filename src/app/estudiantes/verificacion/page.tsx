@@ -35,7 +35,6 @@ export default function VerificacionHuellaPage() {
 
     const resetPage = useCallback(() => {
         // Solo reseteamos si NO estamos en modo manual escribiendo
-        // (Protección extra por si un timer sobrevivió, aunque no debería)
         if (inputRef.current && document.activeElement === inputRef.current) {
             return;
         }
@@ -51,15 +50,14 @@ export default function VerificacionHuellaPage() {
         setIsSubmitting(false);
     }, [detenerEscuchaHuella, cancelarReinicio]);
 
-    // --- PROCESAMIENTO MATRÍCULA ---
+    // --- PROCESAMIENTO MATRÍCULA (MANUAL) ---
     const ejecutarRegistroEscaneo = useCallback(async (valorMatricula: string) => {
         if (!valorMatricula || valorMatricula.length < 3 || isSubmitting) return;
 
         setIsSubmitting(true);
         detenerEscuchaHuella();
-        cancelarReinicio(); // Aseguramos que nada nos interrumpa mientras validamos
+        cancelarReinicio();
 
-        // Limpiamos input para evitar rebotes, pero guardamos el valor para usarlo
         setBarcodeData('');
 
         try {
@@ -77,19 +75,16 @@ export default function VerificacionHuellaPage() {
                 const data = await response.json();
                 setAlumno(data.alumno);
                 setStatus('success');
-                setIsManualModalOpen(false); // Éxito -> Cerramos modal
+                setIsManualModalOpen(false);
 
-                // Programamos la vuelta al inicio (4s para leer los datos)
                 cancelarReinicio();
                 resetTimerRef.current = setTimeout(() => {
-                    // Forzamos el reset ignorando la protección de foco
                     setAlumno(null);
                     setStatus('idle');
                     setBarcodeData('');
                     setIsManualModalOpen(false);
                 }, 4000);
             } else {
-                // Error -> NO cerramos, solo vibramos
                 setShouldVibrate(true);
                 setTimeout(() => setShouldVibrate(false), 500);
             }
@@ -106,7 +101,6 @@ export default function VerificacionHuellaPage() {
     // --- DETECCIÓN TECLADO/ESCÁNER ---
     useEffect(() => {
         if (barcodeData.length > 0 && !isSubmitting) {
-            // 600ms de espera para que termines de escribir o el lector termine de enviar
             const delayDebounceFn = setTimeout(() => {
                 ejecutarRegistroEscaneo(barcodeData);
             }, 600);
@@ -115,16 +109,14 @@ export default function VerificacionHuellaPage() {
         }
     }, [barcodeData, ejecutarRegistroEscaneo, isSubmitting]);
 
-    // Foco agresivo en el modal
     useEffect(() => {
         if (isManualModalOpen) {
-            // Pequeño delay para asegurar que el DOM está listo
             const timer = setTimeout(() => inputRef.current?.focus(), 50);
             return () => clearTimeout(timer);
         }
     }, [isManualModalOpen]);
 
-    // --- HUELLA DACTILAR ---
+    // --- HUELLA DACTILAR (AQUÍ ESTÁ LA CORRECCIÓN) ---
     const iniciarEscucha = useCallback(async () => {
         if (status !== 'idle' || isManualModalOpen) return;
 
@@ -134,18 +126,20 @@ export default function VerificacionHuellaPage() {
         scanAbortController.current = controller;
 
         try {
-            const res = await fetch('http://localhost:8080/api/v1/multi-fingerprint/identify-auto', {
+            // 1. LEEMOS LA PUERTA (NUEVO)
+            const puertaActual = localStorage.getItem('numeroEntrada') || "1";
+
+            // 2. LA AGREGAMOS A LA URL (CORREGIDO)
+            const res = await fetch(`http://localhost:8080/api/v1/multi-fingerprint/identify-auto?numeroEntrada=${puertaActual}`, {
                 signal: controller.signal
             });
 
             if (controller.signal.aborted || isManualModalOpen) return;
 
             if (res.status === 404) {
-                setStatus('error'); // Pantalla roja
+                setStatus('error');
                 setShouldVibrate(true);
 
-                // AQUÍ ESTABA EL PROBLEMA: Este timer mataba el modal manual si se abría después.
-                // La solución real está en el botón de abrir manual (ver abajo).
                 cancelarReinicio();
                 resetTimerRef.current = setTimeout(resetPage, 3000);
                 return;
@@ -155,18 +149,21 @@ export default function VerificacionHuellaPage() {
                 const data = await res.json();
                 if (isManualModalOpen) return;
 
+                // Validación para evitar falsos positivos vacíos
                 if (data && data.primerNombre) {
                     setAlumno(data);
                     setStatus('success');
                     cancelarReinicio();
                     resetTimerRef.current = setTimeout(resetPage, 4000);
                 } else if (!controller.signal.aborted && status === 'idle') {
-                    iniciarEscucha(); // Long-polling loop
+                    // Si el backend devolvió OK pero sin alumno (timeout silencioso), reintentamos
+                    iniciarEscucha();
                 }
             }
         } catch (error: any) {
             if (error.name === 'AbortError') return;
             if (!controller.signal.aborted && !isManualModalOpen && status === 'idle') {
+                // Pausa breve antes de reintentar si hubo error de conexión
                 resetTimerRef.current = setTimeout(iniciarEscucha, 2000);
             }
         }
@@ -184,6 +181,7 @@ export default function VerificacionHuellaPage() {
         };
     }, []);
 
+    // --- RENDERIZADO (DISEÑO INTACTO) ---
     return (
         <div className="min-h-screen bg-slate-100 p-4 flex items-center justify-center relative overflow-hidden font-sans uppercase">
             <div className="w-full max-w-md z-10 font-bold tracking-tight">
@@ -251,7 +249,6 @@ export default function VerificacionHuellaPage() {
                                 LA CREDENCIAL/HUELLA NO COINCIDE <br/> CON NINGÚN REGISTRO.
                             </p>
                             <button onClick={() => {
-                                // Reset manual forzado
                                 setStatus('idle');
                                 setAlumno(null);
                                 iniciarEscucha();
@@ -263,13 +260,12 @@ export default function VerificacionHuellaPage() {
                 )}
             </div>
 
-            {/* BOTÓN FLOTANTE CORREGIDO */}
+            {/* BOTÓN FLOTANTE */}
             <button
                 onClick={() => {
-                    // ¡¡AQUÍ ESTÁ LA MAGIA!!
-                    detenerEscuchaHuella(); // 1. Deja de escuchar huella
-                    cancelarReinicio();     // 2. MATA cualquier timer de reset pendiente (el "fantasma")
-                    setStatus('idle');      // 3. Limpia visualmente si había error rojo de fondo
+                    detenerEscuchaHuella();
+                    cancelarReinicio();
+                    setStatus('idle');
                     setIsManualModalOpen(true);
                     setBarcodeData('');
                 }}
@@ -286,7 +282,7 @@ export default function VerificacionHuellaPage() {
                             <button onClick={() => {
                                 setIsManualModalOpen(false);
                                 setBarcodeData('');
-                                setStatus('idle'); // Regresar limpios
+                                setStatus('idle');
                                 iniciarEscucha();
                             }} className="absolute right-6 top-6 text-slate-500 hover:text-white">
                                 <X size={28}/>

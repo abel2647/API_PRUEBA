@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, {Suspense, useEffect} from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LogOut, UserCheck, Users, Fingerprint } from 'lucide-react';
 
@@ -12,6 +12,18 @@ function PanelContenido() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const puerta = searchParams.get('puerta') || "1";
+
+    // === AGREGA ESTO: SINCRONIZACIÓN ===
+    useEffect(() => {
+        // En cuanto detectamos la puerta en la URL, la guardamos en memoria
+        if (puerta) {
+            console.log("Sincronizando sistema a Puerta:", puerta);
+            localStorage.setItem('numeroEntrada', puerta);
+            // Avisamos a otros componentes que el dato cambió
+            window.dispatchEvent(new Event('storage'));
+        }
+    }, [puerta]);
+    // ===================================
 
     return (
         <div className="h-screen w-screen flex flex-col bg-slate-100 overflow-hidden font-sans">

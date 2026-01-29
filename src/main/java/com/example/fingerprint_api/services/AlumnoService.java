@@ -103,24 +103,54 @@ public class AlumnoService {
         return null;
     }
 
+    // EN: src/main/java/com/example/fingerprint_api/services/AlumnoService.java
+
+    // ... imports
+
+    // BUSCA ESTE MÉTODO Y REEMPLÁZALO (actualizarAlumnoDesdeMapa)
     @Transactional
     public AlumnoModel actualizarAlumnoDesdeMapa(Integer id, String uuid, Map<String, Object> datos) {
         Optional<AlumnoModel> alumnoOpt = alumnoRepository.findById(id);
 
-        if (alumnoOpt.isPresent() && alumnoOpt.get().getUuid().equals(uuid)) {
+        // CORRECCIÓN: Verificamos que el alumno exista.
+        if (alumnoOpt.isPresent()) {
             AlumnoModel alumno = alumnoOpt.get();
 
-            // Extraemos del mapa solo lo que venga
-            if (datos.containsKey("primerNombre")) alumno.setPrimerNombre((String) datos.get("primerNombre"));
-            if (datos.containsKey("apellidoPaterno")) alumno.setApellidoPaterno((String) datos.get("apellidoPaterno"));
-            if (datos.containsKey("apellidoMaterno")) alumno.setApellidoMaterno((String) datos.get("apellidoMaterno"));
-            if (datos.containsKey("numeroControl")) alumno.setNumeroControl((String) datos.get("numeroControl"));
-            if (datos.containsKey("carreraClave")) alumno.setCarreraClave((String) datos.get("carreraClave"));
+            // CORRECCIÓN CRÍTICA:
+            // Si el alumno en BD tiene UUID nulo (insertado por SQL), permitimos editar para corregirlo
+            // O si tiene UUID, verificamos que coincida con el que mandamos.
+            boolean uuidValido = (alumno.getUuid() == null) || alumno.getUuid().equals(uuid);
 
-            alumno.setUpdateAt(LocalDateTime.now());
-            return alumnoRepository.save(alumno);
+            if (uuidValido) {
+                // Si el UUID era nulo, aprovechamos para asignarle uno nuevo y arreglar el registro
+                if (alumno.getUuid() == null) {
+                    alumno.setUuid(UUID.randomUUID().toString());
+                }
+
+                if (datos.containsKey("primerNombre")) alumno.setPrimerNombre((String) datos.get("primerNombre"));
+                if (datos.containsKey("apellidoPaterno")) alumno.setApellidoPaterno((String) datos.get("apellidoPaterno"));
+                if (datos.containsKey("apellidoMaterno")) alumno.setApellidoMaterno((String) datos.get("apellidoMaterno"));
+                if (datos.containsKey("numeroControl")) alumno.setNumeroControl((String) datos.get("numeroControl"));
+                if (datos.containsKey("carreraClave")) alumno.setCarreraClave((String) datos.get("carreraClave"));
+
+                if (datos.containsKey("activo")) {
+                    Object activoVal = datos.get("activo");
+                    if (activoVal instanceof Integer) {
+                        alumno.setActivo((Integer) activoVal);
+                    } else if (activoVal instanceof String) {
+                        try {
+                            alumno.setActivo(Integer.parseInt((String) activoVal));
+                        } catch (NumberFormatException e) {
+                            System.err.println("Error parseando activo: " + e.getMessage());
+                        }
+                    }
+                }
+
+                alumno.setUpdateAt(LocalDateTime.now());
+                return alumnoRepository.save(alumno);
+            }
         }
-        return null;
+        return null; // Retorna null si no existe o el UUID no coincide
     }
 
     // ==========================================
