@@ -21,6 +21,7 @@ interface ValidationResult {
     deleted: number;
 }
 
+
 export const ValidationModal = ({ puertaInicial }: Props) => {
 
     // --- CORRECCIÓN DE ESTADO INICIAL ---
@@ -150,6 +151,7 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
             hour: '2-digit', minute: '2-digit',
         });
     };
+
 
     return (
         <Dialog>

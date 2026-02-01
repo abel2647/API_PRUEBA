@@ -10,12 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Importamos el icono FileSpreadsheet para el botón de Excel
-import { Search, Users, UserCheck, User, RefreshCcw, Eraser, FileSpreadsheet } from 'lucide-react';
+import { Search, Users, UserCheck, User, RefreshCcw, Eraser, FileSpreadsheet, DoorOpen } from 'lucide-react';
 
 // --- INTERFACES ---
 interface DatosPuerta {
-    puerta: number; // o string, dependiendo de tu backend (idEntrada)
+    puerta: string;
     total: number;
 }
 
@@ -33,8 +32,6 @@ interface DashboardData {
 }
 
 export const Estadisticas = () => {
-    // Fecha actual para inicializar
-    //const fechaHoy = new Date().toISOString().split('T')[0];
     const fechaHoy = new Date().toLocaleDateString('en-CA');
 
     // --- ESTADOS ---
@@ -52,12 +49,12 @@ export const Estadisticas = () => {
         fecha: fechaHoy,
         horaInicio: '',
         horaFin: '',
-        tipo: 'TODOS' // Valores: TODOS, ALUMNO, VISITANTE
+        tipo: 'TODOS',
+        puerta: 'TODAS' // Nuevo estado para la puerta
     });
 
     // --- FUNCIONES ---
 
-    // 1. Obtener datos para las gráficas (JSON)
     const obtenerEstadisticas = async () => {
         setLoading(true);
         try {
@@ -66,8 +63,8 @@ export const Estadisticas = () => {
             if (filtros.horaInicio) params.append('horaInicio', filtros.horaInicio);
             if (filtros.horaFin) params.append('horaFin', filtros.horaFin);
             if (filtros.tipo) params.append('tipo', filtros.tipo);
+            if (filtros.puerta && filtros.puerta !== 'TODAS') params.append('puerta', filtros.puerta);
 
-            // Ajusta la URL a tu puerto local (ej. 8080)
             const response = await fetch(`http://localhost:8080/api/dashboard/filtrado?${params.toString()}`);
 
             if (response.ok) {
@@ -83,7 +80,6 @@ export const Estadisticas = () => {
         }
     };
 
-    // 2. Descargar Excel (Blob) - NUEVA FUNCIÓN
     const handleDescargarExcel = async () => {
         try {
             const params = new URLSearchParams();
@@ -91,43 +87,35 @@ export const Estadisticas = () => {
             if (filtros.horaInicio) params.append('horaInicio', filtros.horaInicio);
             if (filtros.horaFin) params.append('horaFin', filtros.horaFin);
             if (filtros.tipo) params.append('tipo', filtros.tipo);
+            if (filtros.puerta && filtros.puerta !== 'TODAS') params.append('puerta', filtros.puerta);
 
-            // Llamada al endpoint que devuelve el archivo binario
             const response = await fetch(`http://localhost:8080/api/dashboard/exportar-excel?${params.toString()}`, {
                 method: 'GET',
             });
 
             if (response.ok) {
-                // Convertir la respuesta en un Blob (archivo binario)
                 const blob = await response.blob();
-                // Crear una URL temporal para el navegador
                 const url = window.URL.createObjectURL(blob);
-                // Crear un elemento <a> invisible para forzar la descarga
                 const a = document.createElement('a');
                 a.href = url;
-                // Nombre del archivo sugerido
                 a.download = `Reporte_Asistencia_${filtros.fecha || 'General'}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
-                // Limpieza
                 a.remove();
                 window.URL.revokeObjectURL(url);
             } else {
-                console.error("Error al descargar el archivo Excel");
-                alert("No se pudo descargar el reporte. Verifica que haya datos.");
+                alert("No se pudo descargar el reporte.");
             }
         } catch (error) {
             console.error("Error de red al descargar:", error);
         }
     };
 
-    // Efecto inicial
     useEffect(() => {
         obtenerEstadisticas();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Se ejecuta solo al montar
+    }, []);
 
-    // Manejadores de eventos
     const handleFiltroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFiltros({
             ...filtros,
@@ -135,10 +123,10 @@ export const Estadisticas = () => {
         });
     };
 
-    const handleSelectChange = (value: string) => {
+    const handleSelectChange = (value: string, campo: string) => {
         setFiltros({
             ...filtros,
-            tipo: value
+            [campo]: value
         });
     }
 
@@ -147,14 +135,13 @@ export const Estadisticas = () => {
     };
 
     const limpiarFiltros = () => {
-        const reset = {
+        setFiltros({
             fecha: fechaHoy,
             horaInicio: '',
             horaFin: '',
-            tipo: 'TODOS'
-        };
-        setFiltros(reset);
-        // Opcional: llamar a obtenerEstadisticas() inmediatamente con los valores reset
+            tipo: 'TODOS',
+            puerta: 'TODAS'
+        });
     };
 
     return (
@@ -164,10 +151,6 @@ export const Estadisticas = () => {
                     <h2 className="text-3xl font-bold tracking-tight">Dashboard de Asistencia</h2>
                     <p className="text-muted-foreground">Estadísticas de entradas de Alumnos y Visitantes.</p>
                 </div>
-                {/* <Button variant="outline" onClick={obtenerEstadisticas} disabled={loading}>
-                    <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    Actualizar
-                </Button>*/}
             </div>
 
             {/* --- SECCIÓN DE FILTROS --- */}
@@ -179,7 +162,7 @@ export const Estadisticas = () => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
 
                         {/* Fecha */}
                         <div className="space-y-2">
@@ -220,7 +203,7 @@ export const Estadisticas = () => {
                         {/* Tipo de Persona */}
                         <div className="space-y-2">
                             <Label>Tipo</Label>
-                            <Select value={filtros.tipo} onValueChange={handleSelectChange}>
+                            <Select value={filtros.tipo} onValueChange={(val) => handleSelectChange(val, 'tipo')}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccionar" />
                                 </SelectTrigger>
@@ -232,9 +215,27 @@ export const Estadisticas = () => {
                             </Select>
                         </div>
 
+                        {/* Filtro Puerta (NUEVO) */}
+                        <div className="space-y-2">
+                            <Label>Puerta</Label>
+                            <Select value={filtros.puerta} onValueChange={(val) => handleSelectChange(val, 'puerta')}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Todas" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="TODAS">Todas</SelectItem>
+                                    <SelectItem value="1">Puerta 1</SelectItem>
+                                    <SelectItem value="2">Puerta 2</SelectItem>
+                                    <SelectItem value="3">Puerta 3</SelectItem>
+                                    <SelectItem value="4">Puerta 4</SelectItem>
+                                    <SelectItem value="5">Puerta 5</SelectItem>
+                                    <SelectItem value="6">Puerta 6</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         {/* BOTONES DE ACCIÓN */}
                         <div className="flex flex-col gap-2">
-                            {/* Fila superior: Filtrar y Limpiar */}
                             <div className="flex gap-2">
                                 <Button
                                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
@@ -253,13 +254,12 @@ export const Estadisticas = () => {
                                 </Button>
                             </div>
 
-                            {/* Fila inferior: DESCARGAR EXCEL (Botón Verde) */}
                             <Button
                                 className="w-full bg-green-600 hover:bg-green-700 text-white shadow-sm"
                                 onClick={handleDescargarExcel}
                             >
                                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                Descargar Excel
+                                Excel
                             </Button>
                         </div>
 
@@ -271,36 +271,35 @@ export const Estadisticas = () => {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Alumnos Hoy</CardTitle>
+                        <CardTitle className="text-sm font-medium">Alumnos Filtrados</CardTitle>
                         <UserCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{data.totalAlumnosHoy}</div>
-                        <p className="text-xs text-muted-foreground">Entradas registradas</p>
+                        <p className="text-xs text-muted-foreground">Coinciden con filtros</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Visitantes Hoy</CardTitle>
+                        <CardTitle className="text-sm font-medium">Visitantes Filtrados</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{data.totalVisitantesHoy}</div>
-                        <p className="text-xs text-muted-foreground">Entradas registradas</p>
+                        <p className="text-xs text-muted-foreground">Coinciden con filtros</p>
                     </CardContent>
                 </Card>
-                {/* Puedes agregar más cards aquí si lo deseas */}
             </div>
 
             {/* --- GRÁFICAS --- */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
 
-                {/* GRÁFICA DE LÍNEAS / ÁREA (Timeline) */}
+                {/* GRÁFICA DE LÍNEAS */}
                 <Card className="col-span-4">
                     <CardHeader>
                         <CardTitle>Flujo de Entradas</CardTitle>
                         <CardDescription>
-                            Distribución por hora del día seleccionado.
+                            {filtros.puerta !== 'TODAS' ? `Actividad específica en Puerta ${filtros.puerta}` : 'Actividad global en todas las puertas'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pl-2">
@@ -329,19 +328,19 @@ export const Estadisticas = () => {
                                 </ResponsiveContainer>
                             ) : (
                                 <div className="h-full flex items-center justify-center text-slate-400">
-                                    No hay datos para mostrar en este rango.
+                                    No hay datos para mostrar.
                                 </div>
                             )}
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* GRÁFICA DE BARRAS (Por Puerta) */}
+                {/* GRÁFICA DE BARRAS */}
                 <Card className="col-span-3">
                     <CardHeader>
                         <CardTitle>Entradas por Puerta</CardTitle>
                         <CardDescription>
-                            Total de registros por acceso.
+                            Comparativa total (Se muestran todas las puertas).
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

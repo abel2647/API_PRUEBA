@@ -1,21 +1,19 @@
 package com.example.fingerprint_api.repositories;
 
 import com.example.fingerprint_api.models.Visitante.VisitanteModel;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface VisitanteRepository extends CrudRepository<VisitanteModel, Integer> {
+public interface VisitanteRepository extends JpaRepository<VisitanteModel, Integer> {
 
-    // Buscar si ya existe alguien con ese teléfono (para no duplicar personas)
     Optional<VisitanteModel> findByNumTelefono(Long numTelefono);
+    List<VisitanteModel> findByDeleted(Integer deleted);
 
-    ArrayList<VisitanteModel> findByDeleted(int deleted);
-
-    ArrayList<VisitanteModel> findByPrimerNombreContainingIgnoreCase(String nombre);
-
-    // NOTA: Aquí YA NO va findByUuid, porque el UUID está en la otra tabla.
+    // CONSULTA VITAL: Solo traemos codigos, NO entradas (para evitar el error)
+    @Query("SELECT DISTINCT v FROM VisitanteModel v LEFT JOIN FETCH v.codigos c WHERE v.deleted = 0")
+    List<VisitanteModel> obtenerTodoElHistorial();
 }

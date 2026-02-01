@@ -1,46 +1,26 @@
 package com.example.fingerprint_api.dtos;
 
-import java.time.LocalDateTime;
-
 public class ValidacionResponseDTO {
-    // Datos de la Persona (Vienen de VisitanteModel)
-    private String primerNombre;
-    private String apellidoPaterno;
-
-    // Datos del Pase/Visita (Vienen de CodigoTemporalModel)
-    private String asunto;
-    private Integer numeroAcompañantes;
-    private LocalDateTime fechaExpiracion;
-    private String uuid;
-
-    // Estado de validación
-    private boolean esValido;
+    private boolean acceso;
     private String mensaje;
+    private String visitante;
+    private String asunto;
 
-    public ValidacionResponseDTO() {}
+    // Constructor sin contadores
+    public ValidacionResponseDTO(boolean acceso, String mensaje, String visitante, String asunto) {
+        this.acceso = acceso;
+        this.mensaje = mensaje;
+        this.visitante = visitante;
+        this.asunto = asunto;
+    }
 
-    // --- GETTERS Y SETTERS ---
-    public String getPrimerNombre() { return primerNombre; }
-    public void setPrimerNombre(String primerNombre) { this.primerNombre = primerNombre; }
-
-    public String getApellidoPaterno() { return apellidoPaterno; }
-    public void setApellidoPaterno(String apellidoPaterno) { this.apellidoPaterno = apellidoPaterno; }
-
-    public String getAsunto() { return asunto; }
-    public void setAsunto(String asunto) { this.asunto = asunto; }
-
-    public Integer getNumeroAcompañantes() { return numeroAcompañantes; }
-    public void setNumeroAcompañantes(Integer numeroAcompañantes) { this.numeroAcompañantes = numeroAcompañantes; }
-
-    public LocalDateTime getFechaExpiracion() { return fechaExpiracion; }
-    public void setFechaExpiracion(LocalDateTime fechaExpiracion) { this.fechaExpiracion = fechaExpiracion; }
-
-    public String getUuid() { return uuid; }
-    public void setUuid(String uuid) { this.uuid = uuid; }
-
-    public boolean isEsValido() { return esValido; }
-    public void setEsValido(boolean esValido) { this.esValido = esValido; }
-
+    // Getters y Setters
+    public boolean isAcceso() { return acceso; }
+    public void setAcceso(boolean acceso) { this.acceso = acceso; }
     public String getMensaje() { return mensaje; }
     public void setMensaje(String mensaje) { this.mensaje = mensaje; }
+    public String getVisitante() { return visitante; }
+    public void setVisitante(String visitante) { this.visitante = visitante; }
+    public String getAsunto() { return asunto; }
+    public void setAsunto(String asunto) { this.asunto = asunto; }
 }

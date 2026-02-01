@@ -44,6 +44,26 @@ public class VisitanteModel {
     @Column(name = "num_telefono")
     private Long numTelefono;
 
+    // ... tus otros atributos (numTelefono, etc)
+
+    // RELACIÓN 1: Un Visitante tiene muchos Códigos
+    @OneToMany(mappedBy = "visitante", fetch = FetchType.LAZY) // EAGER para que cargue todo rápido al consultar
+    private java.util.List<CodigoTemporalModel> codigos;
+
+    @PrePersist
+    protected void onCreate() {
+        // Si no tiene fecha, le ponemos la de AHORITA
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updateAt == null) {
+            this.updateAt = LocalDateTime.now();
+        }
+    }
+
+    public java.util.List<CodigoTemporalModel> getCodigos() { return codigos; }
+    public void setCodigos(java.util.List<CodigoTemporalModel> codigos) { this.codigos = codigos; }
+
     // --- Getters y Setters ---
     public Integer getId_visitante() { return id_visitante; }
     public void setId_visitante(Integer id_visitante) { this.id_visitante = id_visitante; }

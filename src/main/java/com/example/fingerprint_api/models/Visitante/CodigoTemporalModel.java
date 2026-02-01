@@ -28,6 +28,15 @@ public class CodigoTemporalModel {
     @Column(name = "activo")
     private Integer activo;
 
+    // ... dentro de CodigoTemporalModel
+
+    // RELACIÓN 2: Un Código tiene muchas Entradas registradas
+    @OneToMany(mappedBy = "codigoTemporal", fetch = FetchType.LAZY)
+    private java.util.List<RegistroEntradaVisitanteModel> entradas;
+
+    public java.util.List<RegistroEntradaVisitanteModel> getEntradas() { return entradas; }
+    public void setEntradas(java.util.List<RegistroEntradaVisitanteModel> entradas) { this.entradas = entradas; }
+
 
     // Relación con Visitante (Muchas visitas pueden ser de 1 persona)
     @ManyToOne(cascade = CascadeType.MERGE)    @JoinColumn(name = "visitante_id", nullable = false)
