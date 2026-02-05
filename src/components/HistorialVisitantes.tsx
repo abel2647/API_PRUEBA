@@ -23,6 +23,7 @@ interface VisitanteResumen {
     fechaCreacion: string;
     ultimaFechaEscaneo: string | null;
     totalEntradas: number;
+    totalSalidas: number; //
     ultimaPuerta: string;
     fechaExpiracion: string | null;
 }
@@ -32,6 +33,9 @@ interface ResultadoSalida {
     mensaje: string;
     visitante: string | null;
     asunto: string | null;
+    totalAccesos?: number; // Nuevo
+    totalSalidas?: number; // Nuevo
+    puerta?: string;       // Nuevo
 }
 
 export const HistorialVisitantes = () => {
@@ -233,6 +237,7 @@ export const HistorialVisitantes = () => {
                                     <TableHead className="font-bold text-gray-700">CREACIÓN</TableHead>
                                     <TableHead className="font-bold text-gray-700 text-center">ÚLTIMO ESCANEO</TableHead>
                                     <TableHead className="font-bold text-gray-700 text-center">ACCESOS</TableHead>
+                                    <TableHead className="font-bold text-gray-700 text-center">SALIDAS</TableHead>
                                     <TableHead className="font-bold text-gray-700 text-center">PUERTA</TableHead>
                                     <TableHead className="font-bold text-gray-700 text-center">ESTATUS</TableHead>
                                     <TableHead className="font-bold text-gray-700 text-center">ACCIONES</TableHead>
@@ -266,6 +271,12 @@ export const HistorialVisitantes = () => {
                                             <TableCell className="text-center">
                                                 <Badge variant="secondary" className="font-mono font-bold bg-gray-200 text-gray-700">
                                                     {v.totalEntradas}
+                                                </Badge>
+                                            </TableCell>
+                                            {/* CELDA NUEVA */}
+                                            <TableCell className="text-center">
+                                                <Badge variant="outline" className="font-mono font-bold border-blue-200 text-blue-700 bg-blue-50">
+                                                    {v.totalSalidas}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-center text-xs font-bold uppercase text-blue-700">
@@ -350,7 +361,7 @@ export const HistorialVisitantes = () => {
                             <p className="text-xs text-gray-400">El sistema procesará la salida automáticamente.</p>
                         </div>
                     ) : (
-                        // VISTA DE RESULTADO
+                        // VISTA DE RESULTADO (ACTUALIZADA CON CONTADORES)
                         <div className="animate-in zoom-in-95 duration-300 w-full">
                             <Card className={`border-4 ${resultadoSalida.acceso ? 'border-green-500' : 'border-red-500'} shadow-xl`}>
                                 <CardHeader className="pb-2 bg-gray-50/50">
@@ -365,15 +376,36 @@ export const HistorialVisitantes = () => {
                                     </div>
                                 </CardHeader>
 
-                                <CardContent className="pt-4 text-center space-y-2">
-                                    {resultadoSalida.visitante && (
+                                <CardContent className="pt-4 text-center space-y-4">
+                                    {resultadoSalida.visitante ? (
                                         <>
-                                            <p className="text-xs text-gray-500 uppercase">Visitante</p>
-                                            <p className="font-bold text-xl uppercase text-gray-800">{resultadoSalida.visitante}</p>
-                                            <div className="border-t w-1/2 mx-auto my-2"></div>
-                                            <p className="text-xs text-gray-500 uppercase">Estatus</p>
-                                            <p className="font-medium text-gray-600">Pase Desactivado</p>
+                                            <div>
+                                                <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Visitante</p>
+                                                <p className="font-bold text-xl uppercase text-gray-800">{resultadoSalida.visitante}</p>
+                                            </div>
+
+                                            {/* GRID DE ESTADÍSTICAS */}
+                                            <div className="grid grid-cols-3 gap-2 bg-gray-100 p-3 rounded-lg">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase text-gray-500 font-bold">Entradas</span>
+                                                    <span className="text-lg font-mono font-bold text-blue-700">{resultadoSalida.totalAccesos || 0}</span>
+                                                </div>
+                                                <div className="flex flex-col border-l border-r border-gray-300">
+                                                    <span className="text-[10px] uppercase text-gray-500 font-bold">Salidas</span>
+                                                    <span className="text-lg font-mono font-bold text-orange-600">{resultadoSalida.totalSalidas || 0}</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase text-gray-500 font-bold">Puerta</span>
+                                                    <span className="text-lg font-mono font-bold text-gray-700">{resultadoSalida.puerta || '--'}</span>
+                                                </div>
+                                            </div>
+
+                                            {resultadoSalida.acceso && (
+                                                <p className="text-xs font-medium text-gray-400">Pase desactivado correctamente</p>
+                                            )}
                                         </>
+                                    ) : (
+                                        <p className="text-gray-500">No se encontraron datos del visitante.</p>
                                     )}
                                 </CardContent>
 
@@ -384,7 +416,7 @@ export const HistorialVisitantes = () => {
                                         className={`w-full font-bold ${resultadoSalida.acceso ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
                                     >
                                         <X className="mr-2 h-5 w-5" />
-                                        CERRAR
+                                        CERRAR VENTANA
                                     </Button>
                                 </CardFooter>
                             </Card>

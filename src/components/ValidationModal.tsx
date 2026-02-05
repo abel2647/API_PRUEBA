@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { CheckCircle, XCircle, Search, Loader2, ScanLine, Hash, DoorOpen, X } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Loader2, ScanLine, Hash, DoorOpen, LogOut, X } from 'lucide-react'; // Agregué LogOut
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 
 interface Props {
@@ -17,6 +17,7 @@ interface ValidationResult {
     visitante: string | null;
     asunto: string | null;
     totalAccesos?: number;
+    totalSalidas?: number; // <--- AGREGADO: Para recibir el conteo de salidas
     puerta?: string;
 }
 
@@ -51,15 +52,13 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
         }
     }, [showingResult, isLoading]);
 
-    // ESCANEO AUTOMÁTICO AL ESCRIBIR
+    // ESCANEO AUTOMÁTICO
     useEffect(() => {
         if (uuidInput.length > 5 && !isLoading) {
             const timer = setTimeout(() => handleValidation(uuidInput), 800);
             return () => clearTimeout(timer);
         }
     }, [uuidInput]);
-
-    // *** ELIMINADO EL useEffect DE CIERRE AUTOMÁTICO ***
 
     const handleReset = () => {
         setResult(null);
@@ -71,8 +70,8 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
 
         try {
             const puertaFinal = currentPuerta || localStorage.getItem('numeroEntrada') || '1';
-            console.log(`Validando ${codeToValidate} en Puerta ${puertaFinal}`);
 
+            // Usamos el endpoint normal de validar (Torniquete Inteligente)
             const response = await fetch('http://localhost:8080/api/visitante/validar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -162,6 +161,7 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
                                         <CheckCircle className="h-16 w-16 text-green-500" /> :
                                         <XCircle className="h-16 w-16 text-red-500" />
                                     }
+                                    {/* AQUÍ ESTÁ TU TÍTULO DINÁMICO (YA ESTABA BIEN) */}
                                     <CardTitle className={`text-2xl font-black uppercase text-center ${isSuccess ? 'text-green-700' : 'text-red-700'}`}>
                                         {result?.mensaje}
                                     </CardTitle>
@@ -176,21 +176,36 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
                                             <p className="font-bold text-xl uppercase leading-tight">{result.visitante}</p>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 text-center border-t border-b border-gray-100 py-3 mt-2">
+                                        {/* --- CAMBIO: GRID DE 3 COLUMNAS (Entradas | Salidas | Puerta) --- */}
+                                        <div className="grid grid-cols-3 gap-2 text-center border-t border-b border-gray-100 py-3 mt-2">
+
+                                            {/* 1. ENTRADAS */}
                                             <div className="flex flex-col items-center">
-                                                <div className="flex items-center gap-1 text-xs text-gray-500 uppercase">
-                                                    <Hash className="w-3 h-3"/> Accesos
+                                                <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold">
+                                                    <Hash className="w-3 h-3"/> Entradas
                                                 </div>
-                                                <p className="font-bold text-2xl font-mono text-blue-700">
-                                                    {result.totalAccesos}
+                                                <p className="font-bold text-xl font-mono text-blue-700">
+                                                    {result.totalAccesos || 0}
                                                 </p>
                                             </div>
-                                            <div className="flex flex-col items-center">
-                                                <div className="flex items-center gap-1 text-xs text-gray-500 uppercase">
-                                                    <DoorOpen className="w-3 h-3"/> Ubicación
+
+                                            {/* 2. SALIDAS (NUEVO) */}
+                                            <div className="flex flex-col items-center border-l border-r border-gray-200">
+                                                <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold">
+                                                    <LogOut className="w-3 h-3"/> Salidas
                                                 </div>
-                                                <p className="font-bold text-lg uppercase">
-                                                    {result.puerta}
+                                                <p className="font-bold text-xl font-mono text-orange-600">
+                                                    {result.totalSalidas || 0}
+                                                </p>
+                                            </div>
+
+                                            {/* 3. PUERTA */}
+                                            <div className="flex flex-col items-center">
+                                                <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold">
+                                                    <DoorOpen className="w-3 h-3"/> Puerta
+                                                </div>
+                                                <p className="font-bold text-lg uppercase text-gray-700">
+                                                    {result.puerta || '--'}
                                                 </p>
                                             </div>
                                         </div>
@@ -202,12 +217,11 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
                                     </div>
                                 ) : (
                                     <div className="text-center py-4 text-gray-500 italic">
-                                        Intente nuevamente o contacte al administrador.
+                                        No se encontraron datos del visitante.
                                     </div>
                                 )}
                             </CardContent>
 
-                            {/* NUEVO BOTÓN PARA CERRAR */}
                             <CardFooter className="pt-4 pb-4 flex justify-center bg-gray-50">
                                 <Button
                                     onClick={handleReset}

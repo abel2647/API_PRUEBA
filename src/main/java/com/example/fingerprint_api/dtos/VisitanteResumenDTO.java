@@ -14,10 +14,11 @@ public class VisitanteResumenDTO {
     private int totalEntradas;
     private String ultimaPuerta;
     private LocalDateTime fechaExpiracion;
+    private int totalSalidas; // NUEVO CAMPO
 
     public VisitanteResumenDTO(Integer id, String primerNombre, String apellidoPaterno, String apellidoMaterno,
                                String asunto, LocalDateTime fecha, LocalDateTime ultimoEscaneo,
-                               int total, String puerta, LocalDateTime fechaExpiracion) {
+                               int total, int totalSalidas, String puerta, LocalDateTime fechaExpiracion) {
         this.id = id;
         this.primerNombre = primerNombre;
         this.apellidoPaterno = apellidoPaterno;
@@ -28,6 +29,7 @@ public class VisitanteResumenDTO {
         this.totalEntradas = total;
         this.ultimaPuerta = puerta;
         this.fechaExpiracion = fechaExpiracion;
+        this.totalSalidas = totalSalidas; // <--- AQUÍ
     }
 
     // Getters
@@ -41,4 +43,5 @@ public class VisitanteResumenDTO {
     public int getTotalEntradas() { return totalEntradas; }
     public String getUltimaPuerta() { return ultimaPuerta; }
     public LocalDateTime getFechaExpiracion() { return fechaExpiracion; }
+    public int getTotalSalidas() { return totalSalidas; }
 }

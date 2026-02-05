@@ -44,6 +44,7 @@ public class VisitanteController {
         return ResponseEntity.ok(respuesta);
     }
 
+
     // 3. HISTORIAL COMPLETO (GET) - Para la tabla nueva
     @GetMapping("/historial")
     public List<VisitanteResumenDTO> obtenerHistorial() {

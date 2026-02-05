@@ -1,7 +1,9 @@
 package com.example.fingerprint_api.models.Visitante;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "codigo_temporal")
@@ -33,6 +35,10 @@ public class CodigoTemporalModel {
     // RELACIÓN 2: Un Código tiene muchas Entradas registradas
     @OneToMany(mappedBy = "codigoTemporal", fetch = FetchType.LAZY)
     private java.util.List<RegistroEntradaVisitanteModel> entradas;
+    // --- NUEVO: Relación de Salidas ---
+    @OneToMany(mappedBy = "codigoTemporal", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private List<RegistroSalidaVisitanteModel> salidas;
 
     public java.util.List<RegistroEntradaVisitanteModel> getEntradas() { return entradas; }
     public void setEntradas(java.util.List<RegistroEntradaVisitanteModel> entradas) { this.entradas = entradas; }
@@ -42,6 +48,9 @@ public class CodigoTemporalModel {
     @ManyToOne(cascade = CascadeType.MERGE)    @JoinColumn(name = "visitante_id", nullable = false)
     private VisitanteModel visitante;
 
+    // Getter y Setter para salidas
+    public List<RegistroSalidaVisitanteModel> getSalidas() { return salidas; }
+    public void setSalidas(List<RegistroSalidaVisitanteModel> salidas) { this.salidas = salidas; }
     // --- Getters y Setters ---
     public Integer getId_codigo() { return id_codigo; }
     public void setId_codigo(Integer id_codigo) { this.id_codigo = id_codigo; }
