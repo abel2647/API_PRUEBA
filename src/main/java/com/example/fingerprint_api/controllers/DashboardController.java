@@ -14,46 +14,32 @@ import java.io.ByteArrayInputStream;
 
 @RestController
 @RequestMapping("/api/dashboard")
-// Permite peticiones desde cualquier origen (ajusta esto si ya tienes una config global de CORS)
 @CrossOrigin(origins = "*")
 public class DashboardController {
 
     @Autowired
     private DashboardService dashboardService;
 
-    /**
-     * Endpoint para obtener todas las estadísticas del dashboard.
-     * URL: GET http://localhost:8080/api/dashboard/kpis
-     */
-   /* @GetMapping("/kpis")
-    public ResponseEntity<DashboardDTO> obtenerEstadisticasGeneral() {
-        try {
-            DashboardDTO stats = dashboardService.obtenerEstadisticas();
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            // Manejo básico de errores para no romper el frontend
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    */
     @GetMapping("/filtrado")
     public ResponseEntity<DashboardDTO> obtenerEstadisticasConFiltros(
             @RequestParam(required = false) String fecha,
             @RequestParam(required = false) String horaInicio,
             @RequestParam(required = false) String horaFin,
-            @RequestParam(required = false, defaultValue = "TODOS") String tipo
+            @RequestParam(required = false, defaultValue = "TODOS") String tipo,
+            @RequestParam(required = false) Integer puerta // Nuevo parámetro opcional
     ) {
-        return ResponseEntity.ok(dashboardService.obtenerEstadisticasFiltradas(fecha, horaInicio, horaFin, tipo));
+        return ResponseEntity.ok(dashboardService.obtenerEstadisticasFiltradas(fecha, horaInicio, horaFin, tipo, puerta));
     }
+
     @GetMapping("/exportar-excel")
     public ResponseEntity<InputStreamResource> descargarReporteExcel(
             @RequestParam(required = false) String fecha,
             @RequestParam(required = false) String horaInicio,
             @RequestParam(required = false) String horaFin,
-            @RequestParam(required = false, defaultValue = "TODOS") String tipo
+            @RequestParam(required = false, defaultValue = "TODOS") String tipo,
+            @RequestParam(required = false) Integer puerta // Nuevo parámetro opcional
     ) {
-        ByteArrayInputStream in = dashboardService.generarReporteExcel(fecha, horaInicio, horaFin, tipo);
+        ByteArrayInputStream in = dashboardService.generarReporteExcel(fecha, horaInicio, horaFin, tipo, puerta);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Disposition", "attachment; filename=reporte_asistencia.xlsx");
@@ -64,5 +50,4 @@ public class DashboardController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(new InputStreamResource(in));
     }
-
 }

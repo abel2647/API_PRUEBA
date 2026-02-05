@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -37,7 +38,6 @@ public class MultiReaderFingerprintService {
         validReaders.clear();
     }
 
-    // Cambia 'public synchronized void' por 'public synchronized List<String>'
     public synchronized List<String> refreshConnectedReaders() {
         try {
             ReaderCollection readers = UareUGlobal.GetReaderCollection();
@@ -51,11 +51,11 @@ public class MultiReaderFingerprintService {
         } catch (UareUException e) {
             logger.error("Error SDK: " + e.getMessage());
         }
-        // Agrega esta línea al final para devolver las llaves (nombres) del mapa
         return new ArrayList<>(validReaders.keySet());
     }
 
-    public AlumnoModel identificarDedoAutomatico() {
+    // --- CORRECCIÓN AQUÍ: Agregamos el parámetro numeroEntrada ---
+    public AlumnoModel identificarDedoAutomatico(Integer numeroEntrada) {
         if (validReaders.isEmpty()) refreshConnectedReaders();
         Reader reader = validReaders.values().stream().findFirst().orElse(null);
 
@@ -64,7 +64,7 @@ public class MultiReaderFingerprintService {
         try {
             try { reader.CancelCapture(); } catch (Exception e) {}
 
-            logger.info(">>> Lector encendido: Esperando dedo (5 segundos)...");
+            logger.info(">>> Lector encendido: Esperando dedo (5 segundos) para Puerta " + numeroEntrada + "...");
             Reader.CaptureResult cr = reader.Capture(Fid.Format.ANSI_381_2004, Reader.ImageProcessing.IMG_PROC_DEFAULT, 500, 5000);
 
             if (cr != null && cr.quality == Reader.CaptureQuality.GOOD) {
@@ -79,22 +79,26 @@ public class MultiReaderFingerprintService {
                             int score = engine.Compare(fmdCapturado, 0, fmdBaseDatos, 0);
 
                             if (score < 21474) { // Match!
-                                asistenciaService.registrarEntrada(alumno, 1);
+                                // --- CORRECCIÓN: Usamos la variable, no el 1 fijo ---
+                                asistenciaService.registrarEntrada(alumno, numeroEntrada);
+                                logger.info("Asistencia registrada: " + alumno.getPrimerNombre() + " en puerta " + numeroEntrada);
                                 return alumno;
                             }
                         } catch (Exception e) { continue; }
                     }
                 }
                 logger.info("No hubo coincidencia en BD.");
-                return null; // Caso: Dedo puesto pero NO reconocido (Ventana Roja)
+                return null;
             } else {
-                return new AlumnoModel(); // Caso: Mala calidad (Reintento Silencioso)
+                return new AlumnoModel();
             }
 
         } catch (UareUException e) {
-            if (e.getMessage().contains("TIMED_OUT")) {
-                return new AlumnoModel(); // Caso: Nadie puso el dedo (Reintento Silencioso)
+            String mensajeError = e.getMessage();
+            if (mensajeError != null && mensajeError.contains("TIMED_OUT")) {
+                return new AlumnoModel();
             }
+            logger.error("Error de hardware: " + mensajeError );
             return null;
         } catch (Exception e) {
             return null;
@@ -113,7 +117,8 @@ public class MultiReaderFingerprintService {
                 Fmd fmd = engine.CreateFmd(cr.image, Fmd.Format.ANSI_378_2004);
                 return alumnoRepository.findById(idAlumno).map(a -> {
                     a.setHuellaFmd(fmd.getData());
-                    alumnoRepository.saveAndFlush(a);
+                    a.setUpdateAt(LocalDateTime.now());
+                    alumnoRepository.save(a);
                     return "Exito: Guardado";
                 }).orElse("Alumno no encontrado");
             }
