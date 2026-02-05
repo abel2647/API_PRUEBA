@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -26,6 +27,10 @@ public class VisitanteService {
     @Autowired
     RegistroEntradaVisitanteRepository registroEntradaRepository;
 
+    // CONFIGURACIÓN: Tiempo de espera para volver a entrar (Anti-Spam)
+    private static final int MINUTOS_ESPERA_REINGRESO = 15;
+
+    // --- 1. REGISTRO (DURACIÓN 24 HORAS) ---
     @Transactional
     public Map<String, Object> registrarVisitanteCompleto(VisitanteRegistroDTO dto) {
         LocalDateTime now = LocalDateTime.now();
@@ -59,7 +64,10 @@ public class VisitanteService {
         CodigoTemporalModel codigo = new CodigoTemporalModel();
         codigo.setAsunto(dto.getAsunto());
         codigo.setNumeroAcompañantes(dto.getNumeroAcompañantes());
+
+        // CAMBIO: 24 horas de validez por defecto (hasta que marquen salida)
         codigo.setFechaExpiracion(now.plusHours(2));
+
         codigo.setActivo(1);
         String safeUuid = UUID.randomUUID().toString().replace("-", "").toUpperCase();
         codigo.setUuid(safeUuid);
@@ -73,6 +81,7 @@ public class VisitanteService {
         return respuesta;
     }
 
+    // --- 2. HISTORIAL ---
     @Transactional(readOnly = true)
     public List<VisitanteResumenDTO> obtenerHistorialResumen() {
         try {
@@ -104,12 +113,11 @@ public class VisitanteService {
                     }
                 }
 
-                // NUEVO CONSTRUCTOR CON NOMBRES SEPARADOS
                 resumen.add(new VisitanteResumenDTO(
                         v.getId_visitante(),
-                        v.getPrimerNombre(),     // 1. Nombre
-                        v.getApellidoPaterno(),  // 2. Paterno
-                        v.getApellidoMaterno(),  // 3. Materno
+                        v.getPrimerNombre(),
+                        v.getApellidoPaterno(),
+                        v.getApellidoMaterno(),
                         ultimoAsunto,
                         v.getCreatedAt(),
                         ultimaFecha,
@@ -131,10 +139,8 @@ public class VisitanteService {
             return new ArrayList<>();
         }
     }
-    // 3. VALIDACIÓN (AQUÍ ESTÁ EL CAMBIO IMPORTANTE)
-    // ... Imports y resto de la clase ...
 
-    // SUSTITUYE EL MÉTODO validarPasePorUuid POR ESTE COMPLETO:
+    // --- 3. VALIDACIÓN DE ENTRADA (CON ANTI-SPAM) ---
     public ValidacionResponseDTO validarPasePorUuid(String uuid, int numeroPuerta) {
         Optional<CodigoTemporalModel> codigoOpt = codigoTemporalRepository.findByUuid(uuid);
 
@@ -145,24 +151,32 @@ public class VisitanteService {
         CodigoTemporalModel codigo = codigoOpt.get();
         VisitanteModel visitante = codigo.getVisitante();
 
-        // 1. Verificar si el visitante está borrado
         if (visitante.getDeleted() != null && visitante.getDeleted() == 1) {
             return new ValidacionResponseDTO(false, "Visitante dado de baja", null, null, 0, "N/A");
         }
 
-        // 2. VERIFICAR SI YA EXPIRÓ (Esto soluciona lo del pase de hace 3 días)
         if (codigo.getFechaExpiracion().isBefore(LocalDateTime.now())) {
             return new ValidacionResponseDTO(
-                    false,
-                    "PASE VENCIDO",
-                    visitante.getPrimerNombre() + " " + visitante.getApellidoPaterno(),
-                    codigo.getAsunto(),
-                    0,
-                    "N/A"
+                    false, "PASE VENCIDO / FINALIZADO", visitante.getPrimerNombre() + " " + visitante.getApellidoPaterno(), codigo.getAsunto(), 0, "N/A"
             );
         }
 
-        // 3. Registrar entrada si todo está bien
+        // --- VALIDACIÓN ANTI-SPAM (15 MINUTOS) ---
+        if (codigo.getEntradas() != null && !codigo.getEntradas().isEmpty()) {
+            RegistroEntradaVisitanteModel ultimaEntrada = codigo.getEntradas().get(codigo.getEntradas().size() - 1);
+            LocalDateTime horaUltimaEntrada = ultimaEntrada.getFechaHora();
+            LocalDateTime ahora = LocalDateTime.now();
+
+            long minutosDiferencia = Duration.between(horaUltimaEntrada, ahora).toMinutes();
+
+            if (minutosDiferencia < MINUTOS_ESPERA_REINGRESO) {
+                long minutosRestantes = MINUTOS_ESPERA_REINGRESO - minutosDiferencia;
+                return new ValidacionResponseDTO(
+                        false, "ESPERE " + minutosRestantes + " MINUTOS", visitante.getPrimerNombre(), "Reingreso muy rápido", 0, "N/A"
+                );
+            }
+        }
+
         RegistroEntradaVisitanteModel entrada = new RegistroEntradaVisitanteModel();
         entrada.setFechaHora(LocalDateTime.now());
         entrada.setEntrada(numeroPuerta);
@@ -171,17 +185,57 @@ public class VisitanteService {
 
         int totalAccesos = registroEntradaRepository.contarTotalEntradas(visitante.getId_visitante());
 
+        return new ValidacionResponseDTO(true, "Acceso Permitido", visitante.getPrimerNombre() + " " + visitante.getApellidoPaterno(), codigo.getAsunto(), totalAccesos, "Puerta " + numeroPuerta);
+    }
+
+    // --- 4. REGISTRAR SALIDA (NUEVO MÉTODO PARA EL ESCÁNER DE SALIDA) ---
+    @Transactional
+    public ValidacionResponseDTO registrarSalidaPorUuid(String uuid) {
+        Optional<CodigoTemporalModel> codigoOpt = codigoTemporalRepository.findByUuid(uuid);
+
+        if (codigoOpt.isEmpty()) {
+            return new ValidacionResponseDTO(false, "CÓDIGO NO ENCONTRADO", null, null, 0, "N/A");
+        }
+
+        CodigoTemporalModel codigo = codigoOpt.get();
+        VisitanteModel visitante = codigo.getVisitante();
+
+        // Validar si ya estaba cerrado
+        if (codigo.getFechaExpiracion().isBefore(LocalDateTime.now())) {
+            return new ValidacionResponseDTO(false, "EL PASE YA ESTABA CERRADO", visitante.getPrimerNombre(), codigo.getAsunto(), 0, "N/A");
+        }
+
+        // FINALIZAR VISITA: CAMBIAR FECHA EXPIRACIÓN AL PASADO
+        codigo.setFechaExpiracion(LocalDateTime.now().minusDays(1));
+        codigoTemporalRepository.save(codigo);
+
         return new ValidacionResponseDTO(
                 true,
-                "Acceso Permitido",
+                "SALIDA REGISTRADA",
                 visitante.getPrimerNombre() + " " + visitante.getApellidoPaterno(),
-                codigo.getAsunto(),
-                totalAccesos,
-                "Puerta " + numeroPuerta
+                "Visita Finalizada Correctamente",
+                0,
+                "Salida"
         );
     }
 
-    // 4. GESTIÓN
+    // --- 5. FORZAR EXPIRACIÓN POR ID (RESPALDO MANUAL) ---
+    @Transactional
+    public boolean forzarExpiracion(Integer idVisitante) {
+        Optional<VisitanteModel> visOpt = visitanteRepository.findById(idVisitante);
+        if(visOpt.isEmpty()) return false;
+
+        VisitanteModel v = visOpt.get();
+        if(v.getCodigos() != null && !v.getCodigos().isEmpty()) {
+            CodigoTemporalModel ultimoCodigo = v.getCodigos().get(v.getCodigos().size() - 1);
+            ultimoCodigo.setFechaExpiracion(LocalDateTime.now().minusDays(1));
+            codigoTemporalRepository.save(ultimoCodigo);
+            return true;
+        }
+        return false;
+    }
+
+    // MÉTODOS AUXILIARES
     public List<VisitanteModel> obtenerVisitantes() { return visitanteRepository.findByDeleted(0); }
 
     public boolean eliminarVisitanteSeguro(Integer id) {

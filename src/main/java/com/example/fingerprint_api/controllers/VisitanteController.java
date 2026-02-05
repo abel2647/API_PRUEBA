@@ -37,6 +37,12 @@ public class VisitanteController {
             return ResponseEntity.internalServerError().body(Map.of("error", "Error al registrar: " + e.getMessage()));
         }
     }
+    @PostMapping("/salida")
+    public ResponseEntity<ValidacionResponseDTO> registrarSalida(@RequestBody Map<String, String> body) {
+        String uuid = body.get("uuid");
+        ValidacionResponseDTO respuesta = visitanteService.registrarSalidaPorUuid(uuid);
+        return ResponseEntity.ok(respuesta);
+    }
 
     // 3. HISTORIAL COMPLETO (GET) - Para la tabla nueva
     @GetMapping("/historial")
@@ -74,6 +80,16 @@ public class VisitanteController {
             return ResponseEntity.ok("Visitante restaurado correctamente");
         } else {
             return ResponseEntity.notFound().build();
+        }
+    }
+    // 2. ANTIGUO (Respaldo): Por si pierden el QR y necesitas cerrarlo por ID
+    @PutMapping("/expirar/{id}")
+    public ResponseEntity<?> expirarManualmente(@PathVariable Integer id) {
+        boolean exito = visitanteService.forzarExpiracion(id);
+        if (exito) {
+            return ResponseEntity.ok(Map.of("mensaje", "Visita finalizada manualmente (Respaldo)"));
+        } else {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "No se pudo finalizar"));
         }
     }
 }
