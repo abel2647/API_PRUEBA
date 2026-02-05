@@ -1,20 +1,18 @@
 'use client';
 
+import React from 'react';
 import { RegistroVisitanteForm } from '@/components/RegistroVisitantesForm';
 import { ValidationModal } from '@/components/ValidationModal';
-import { useSearchParams } from 'next/navigation';
 
 export default function Home() {
-
-    const searchParams = useSearchParams();
-    const puerta = searchParams.get('puerta') || "1";
     return (
-        <>
-            {
-            }
+        <div className="container mx-auto py-8 px-4 max-w-7xl">
+            {/* 1. FORMULARIO DE REGISTRO */}
             <RegistroVisitanteForm />
-            {/*<ValidationModal />*/}
-            <ValidationModal puertaInicial={puerta}/>
-        </>
+
+            {/* 2. EL MODAL (Botón Flotante) */}
+            {/* Ya no le pasamos 'isOpen' porque el modal se manda solo */}
+            <ValidationModal />
+        </div>
     );
 }

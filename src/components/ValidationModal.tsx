@@ -3,8 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, XCircle, Search, Loader2, ScanLine } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { CheckCircle, XCircle, Search, Loader2, ScanLine, Hash, DoorOpen, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 
 interface Props {
@@ -12,146 +12,94 @@ interface Props {
 }
 
 interface ValidationResult {
-    primerNombre: string;
-    apellidoPaterno: string;
-    asunto: string;
-    numeroAcompañantes: number;
-    fechaExpiracion: string;
-    uuid: string;
-    deleted: number;
+    acceso: boolean;
+    mensaje: string;
+    visitante: string | null;
+    asunto: string | null;
+    totalAccesos?: number;
+    puerta?: string;
 }
-
 
 export const ValidationModal = ({ puertaInicial }: Props) => {
 
-    // --- CORRECCIÓN DE ESTADO INICIAL ---
-    // Si hay prop, úsala. Si no, busca en storage. Si no, usa '1'.
     const [currentPuerta, setCurrentPuerta] = useState<string>('1');
 
-    // Efecto de inicialización robusto
     useEffect(() => {
-        // 1. Preferencia: Propiedad directa (URL)
         if (puertaInicial && puertaInicial !== '') {
             setCurrentPuerta(puertaInicial);
             localStorage.setItem('numeroEntrada', puertaInicial);
-        }
-        // 2. Respaldo: Memoria del navegador
-        else {
+        } else {
             const guardada = localStorage.getItem('numeroEntrada');
-            if (guardada) {
-                setCurrentPuerta(guardada);
-            }
+            if (guardada) setCurrentPuerta(guardada);
         }
     }, [puertaInicial]);
 
     const [uuidInput, setUuidInput] = useState('');
     const [result, setResult] = useState<ValidationResult | null>(null);
-    const [isValid, setIsValid] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState('');
 
     const inputRef = useRef<HTMLInputElement>(null);
-    const showingResult = !!(result || message);
+
+    const showingResult = !!result;
+    const isSuccess = result?.acceso === true;
 
     // CONTROL DE FOCO
     useEffect(() => {
         if (!showingResult && !isLoading) {
-            const timer = setTimeout(() => {
-                inputRef.current?.focus();
-            }, 100);
+            const timer = setTimeout(() => inputRef.current?.focus(), 100);
             return () => clearTimeout(timer);
         }
     }, [showingResult, isLoading]);
 
-    // ESCANEO AUTOMÁTICO
+    // ESCANEO AUTOMÁTICO AL ESCRIBIR
     useEffect(() => {
-        if (uuidInput.length > 0 && !isLoading) {
-            const timer = setTimeout(() => {
-                handleValidation(uuidInput);
-            }, 1000);
+        if (uuidInput.length > 5 && !isLoading) {
+            const timer = setTimeout(() => handleValidation(uuidInput), 800);
             return () => clearTimeout(timer);
         }
     }, [uuidInput]);
 
-    // LIMPIEZA AUTOMÁTICA
-    useEffect(() => {
-        let timer: NodeJS.Timeout;
-        if (showingResult) {
-            timer = setTimeout(() => {
-                handleReset();
-            }, 3000);
-        }
-        return () => clearTimeout(timer);
-    }, [showingResult]);
+    // *** ELIMINADO EL useEffect DE CIERRE AUTOMÁTICO ***
 
     const handleReset = () => {
         setResult(null);
-        setIsValid(null);
-        setMessage('');
         setUuidInput('');
     };
 
     const handleValidation = async (codeToValidate: string) => {
         setIsLoading(true);
-        setMessage('');
 
         try {
-            // --- CORRECCIÓN FINAL DE VALOR ---
-            // Aseguramos que usamos el valor más fresco posible
             const puertaFinal = currentPuerta || localStorage.getItem('numeroEntrada') || '1';
+            console.log(`Validando ${codeToValidate} en Puerta ${puertaFinal}`);
 
-            console.log(`Enviando validación... UUID: ${codeToValidate}, Puerta: ${puertaFinal}`);
+            const response = await fetch('http://localhost:8080/api/visitante/validar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uuid: codeToValidate,
+                    puerta: parseInt(puertaFinal)
+                })
+            });
 
-            const response = await fetch(
-                `http://localhost:8080/api/visitante/validar/${codeToValidate}?numeroEntrada=${puertaFinal}`
-            );
-
-            setUuidInput('');
-
-            if (response.status === 404) {
-                setIsValid(false);
-                setMessage("PASE NO VÁLIDO");
-                setResult(null);
-                return;
-            }
-
-            if (!response.ok) throw new Error("Error API");
+            if (!response.ok) throw new Error("Error de conexión");
 
             const data: ValidationResult = await response.json();
-            const expirationTime = new Date(data.fechaExpiracion);
-            const now = new Date();
-            const expired = expirationTime < now;
-            const deleted = data.deleted === 1;
-
-            if (expired || deleted) {
-                setIsValid(false);
-                setMessage(expired ? "PASE EXPIRADO" : "PASE CANCELADO");
-            } else {
-                setIsValid(true);
-                setMessage("ACCESO PERMITIDO");
-            }
-
             setResult(data);
 
         } catch (error) {
             console.error(error);
-            setIsValid(false);
-            setMessage("ERROR DE SISTEMA");
+            setResult({
+                acceso: false,
+                mensaje: "ERROR DE CONEXIÓN",
+                visitante: null,
+                asunto: null
+            });
             setUuidInput('');
         } finally {
             setIsLoading(false);
         }
     };
-
-    const formatDateTime = (isoString: string) => {
-        if (!isoString) return 'N/A';
-        const date = new Date(isoString);
-        return date.toLocaleString('es-MX', {
-            year: 'numeric', month: 'numeric', day: 'numeric',
-            hour: '2-digit', minute: '2-digit',
-        });
-    };
-
 
     return (
         <Dialog>
@@ -162,7 +110,7 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
             </DialogTrigger>
 
             <DialogContent
-                className="sm:max-w-[500px] min-h-[300px] flex flex-col justify-center"
+                className="sm:max-w-[500px] min-h-[350px] flex flex-col justify-center"
                 onOpenAutoFocus={(e) => {
                     e.preventDefault();
                     setTimeout(() => inputRef.current?.focus(), 100);
@@ -200,66 +148,80 @@ export const ValidationModal = ({ puertaInicial }: Props) => {
                                 </div>
                             )}
                         </div>
-                        <div className="text-xs text-gray-400 italic">
-                            {isLoading ? "Consultando base de datos..." : "Esperando entrada..."}
-                        </div>
                     </div>
                 ) : (
                     <div className="animate-in zoom-in-95 duration-300 w-full">
                         <DialogHeader className="mb-2">
-                            <DialogTitle className="text-center text-xl text-gray-400">Resultado de Validación</DialogTitle>
+                            <DialogTitle className="text-center text-xl text-gray-400">Resultado</DialogTitle>
                         </DialogHeader>
 
-                        <Card className={`border-4 ${isValid ? 'border-green-500' : isValid === false ? 'border-red-500' : 'border-gray-200'} shadow-xl`}>
+                        <Card className={`border-4 ${isSuccess ? 'border-green-500' : 'border-red-500'} shadow-xl`}>
                             <CardHeader className="pb-2 bg-gray-50/50">
                                 <div className="flex flex-col items-center justify-center gap-2">
-                                    {isValid === true && <CheckCircle className="h-16 w-16 text-green-500" />}
-                                    {isValid === false && <XCircle className="h-16 w-16 text-red-500" />}
-                                    <CardTitle className={`text-2xl font-black uppercase text-center ${isValid ? 'text-green-700' : 'text-red-700'}`}>
-                                        {message}
+                                    {isSuccess ?
+                                        <CheckCircle className="h-16 w-16 text-green-500" /> :
+                                        <XCircle className="h-16 w-16 text-red-500" />
+                                    }
+                                    <CardTitle className={`text-2xl font-black uppercase text-center ${isSuccess ? 'text-green-700' : 'text-red-700'}`}>
+                                        {result?.mensaje}
                                     </CardTitle>
                                 </div>
                             </CardHeader>
+
                             <CardContent className="pt-4">
-                                {result ? (
+                                {result?.visitante ? (
                                     <div className="space-y-4 text-base">
-                                        <div className="grid grid-cols-2 gap-4 text-center">
-                                            <div>
-                                                <p className="text-xs text-gray-500 uppercase">Visitante</p>
-                                                <p className="font-bold text-lg leading-tight">{result.primerNombre} {result.apellidoPaterno}</p>
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase">Visitante</p>
+                                            <p className="font-bold text-xl uppercase leading-tight">{result.visitante}</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 text-center border-t border-b border-gray-100 py-3 mt-2">
+                                            <div className="flex flex-col items-center">
+                                                <div className="flex items-center gap-1 text-xs text-gray-500 uppercase">
+                                                    <Hash className="w-3 h-3"/> Accesos
+                                                </div>
+                                                <p className="font-bold text-2xl font-mono text-blue-700">
+                                                    {result.totalAccesos}
+                                                </p>
                                             </div>
-                                            <div>
-                                                <p className="text-xs text-gray-500 uppercase">Acompañantes</p>
-                                                <p className="font-bold text-lg">{result.numeroAcompañantes}</p>
+                                            <div className="flex flex-col items-center">
+                                                <div className="flex items-center gap-1 text-xs text-gray-500 uppercase">
+                                                    <DoorOpen className="w-3 h-3"/> Ubicación
+                                                </div>
+                                                <p className="font-bold text-lg uppercase">
+                                                    {result.puerta}
+                                                </p>
                                             </div>
                                         </div>
-                                        <div className="bg-gray-100 p-3 rounded-lg text-center">
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Asunto</p>
-                                            <p className="text-sm font-medium">{result.asunto}</p>
+
+                                        <div className="bg-gray-100 p-2 rounded text-center">
+                                            <p className="text-xs text-gray-500 uppercase font-bold">Asunto</p>
+                                            <p className="text-sm font-medium uppercase">{result.asunto}</p>
                                         </div>
-                                        <p className={`text-xs font-bold text-center mt-2 ${isValid ? 'text-green-800' : 'text-red-800'}`}>
-                                            VENCE: {formatDateTime(result.fechaExpiracion)}
-                                        </p>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-4 text-gray-500">
-                                        No se encontraron datos para este código.
+                                    <div className="text-center py-4 text-gray-500 italic">
+                                        Intente nuevamente o contacte al administrador.
                                     </div>
                                 )}
                             </CardContent>
+
+                            {/* NUEVO BOTÓN PARA CERRAR */}
+                            <CardFooter className="pt-4 pb-4 flex justify-center bg-gray-50">
+                                <Button
+                                    onClick={handleReset}
+                                    size="lg"
+                                    className={`w-full text-lg font-bold ${isSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                                >
+                                    <X className="mr-2 h-5 w-5" />
+                                    CERRAR
+                                </Button>
+                            </CardFooter>
                         </Card>
-                        <div className="mt-4">
-                            <div className="w-full bg-gray-200 h-1 rounded-full overflow-hidden">
-                                <div className="bg-gray-800 h-full animate-[progress_3s_linear_forwards] w-full origin-left" />
-                            </div>
-                            <p className="text-[10px] text-center text-gray-400 mt-1 uppercase tracking-wider">
-                                Volviendo al escáner en 3s...
-                            </p>
-                        </div>
                     </div>
                 )}
             </DialogContent>
-            <style jsx global>{`@keyframes progress { from { width: 100%; } to { width: 0%; } }`}</style>
         </Dialog>
     );
 };

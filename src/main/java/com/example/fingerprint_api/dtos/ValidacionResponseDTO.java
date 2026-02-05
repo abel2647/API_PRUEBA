@@ -5,13 +5,17 @@ public class ValidacionResponseDTO {
     private String mensaje;
     private String visitante;
     private String asunto;
+    // NUEVOS CAMPOS
+    private int totalAccesos;
+    private String puerta;
 
-    // Constructor sin contadores
-    public ValidacionResponseDTO(boolean acceso, String mensaje, String visitante, String asunto) {
+    public ValidacionResponseDTO(boolean acceso, String mensaje, String visitante, String asunto, int totalAccesos, String puerta) {
         this.acceso = acceso;
         this.mensaje = mensaje;
         this.visitante = visitante;
         this.asunto = asunto;
+        this.totalAccesos = totalAccesos;
+        this.puerta = puerta;
     }
 
     // Getters y Setters
@@ -23,4 +27,8 @@ public class ValidacionResponseDTO {
     public void setVisitante(String visitante) { this.visitante = visitante; }
     public String getAsunto() { return asunto; }
     public void setAsunto(String asunto) { this.asunto = asunto; }
+    public int getTotalAccesos() { return totalAccesos; }
+    public void setTotalAccesos(int totalAccesos) { this.totalAccesos = totalAccesos; }
+    public String getPuerta() { return puerta; }
+    public void setPuerta(String puerta) { this.puerta = puerta; }
 }

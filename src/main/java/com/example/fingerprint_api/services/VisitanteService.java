@@ -21,38 +21,27 @@ public class VisitanteService {
 
     @Autowired
     VisitanteRepository visitanteRepository;
-
     @Autowired
     CodigoTemporalRepository codigoTemporalRepository;
-
     @Autowired
     RegistroEntradaVisitanteRepository registroEntradaRepository;
 
-    // ==========================================
-    // 1. REGISTRO (Crea o Actualiza)
-    // ==========================================
     @Transactional
     public Map<String, Object> registrarVisitanteCompleto(VisitanteRegistroDTO dto) {
         LocalDateTime now = LocalDateTime.now();
         VisitanteModel visitante;
 
-        // Buscamos por teléfono para evitar duplicados
         Optional<VisitanteModel> existente = visitanteRepository.findByNumTelefono(dto.getNumTelefono());
 
         if (existente.isPresent()) {
-            // ACTUALIZAR EXISTENTE
             visitante = existente.get();
             visitante.setPrimerNombre(dto.getPrimerNombre());
             visitante.setApellidoPaterno(dto.getApellidoPaterno());
             visitante.setApellidoMaterno(dto.getApellidoMaterno());
             visitante.setUpdateAt(now);
-            // Si estaba eliminado, lo reactivamos
-            if (visitante.getDeleted() != null && visitante.getDeleted() == 1) {
-                visitante.setDeleted(0);
-            }
+            if(visitante.getDeleted() != null && visitante.getDeleted() == 1) visitante.setDeleted(0);
             visitanteRepository.save(visitante);
         } else {
-            // CREAR NUEVO
             visitante = new VisitanteModel();
             visitante.setPrimerNombre(dto.getPrimerNombre());
             visitante.setApellidoPaterno(dto.getApellidoPaterno());
@@ -61,60 +50,50 @@ public class VisitanteService {
             visitante.setEdad(dto.getEdad());
             visitante.setNumTelefono(dto.getNumTelefono());
             visitante.setUsuario(dto.getUsuario());
-
-            // Datos de auditoría
             visitante.setCreatedAt(now);
             visitante.setUpdateAt(now);
             visitante.setDeleted(0);
-
             visitante = visitanteRepository.save(visitante);
         }
 
-        // GENERAR PASE (CÓDIGO)
         CodigoTemporalModel codigo = new CodigoTemporalModel();
         codigo.setAsunto(dto.getAsunto());
         codigo.setNumeroAcompañantes(dto.getNumeroAcompañantes());
-        codigo.setFechaExpiracion(now.plusHours(24));
+        codigo.setFechaExpiracion(now.plusHours(2));
         codigo.setActivo(1);
-
         String safeUuid = UUID.randomUUID().toString().replace("-", "").toUpperCase();
         codigo.setUuid(safeUuid);
         codigo.setVisitante(visitante);
-
         codigoTemporalRepository.save(codigo);
 
         Map<String, Object> respuesta = new HashMap<>();
         respuesta.put("id_visitante", visitante.getId_visitante());
         respuesta.put("nombreCompleto", visitante.getPrimerNombre() + " " + visitante.getApellidoPaterno());
         respuesta.put("uuid", safeUuid);
-
         return respuesta;
     }
 
-    // ==========================================
-    // 2. HISTORIAL DE CONSULTAS (Vital para la tabla)
-    // ==========================================
-    @Transactional(readOnly = true) // VITAL: Mantiene la conexión abierta para cargar las entradas (Lazy)
+    @Transactional(readOnly = true)
     public List<VisitanteResumenDTO> obtenerHistorialResumen() {
         try {
-            // Usamos la consulta optimizada que SOLO trae Visitante + Códigos
-            // (Asegúrate de que VisitanteRepository tenga el @Query correcto sin el segundo FETCH)
             List<VisitanteModel> visitantes = visitanteRepository.obtenerTodoElHistorial();
-
             List<VisitanteResumenDTO> resumen = new ArrayList<>();
 
             for (VisitanteModel v : visitantes) {
                 int totalEntradas = 0;
                 String ultimaPuerta = "Sin registro";
                 LocalDateTime ultimaFecha = null;
+                String ultimoAsunto = "General";
+                LocalDateTime ultimaExpiracion = null;
 
-                if (v.getCodigos() != null) {
+                if (v.getCodigos() != null && !v.getCodigos().isEmpty()) {
+                    CodigoTemporalModel ultimoCodigo = v.getCodigos().get(v.getCodigos().size() - 1);
+                    ultimoAsunto = ultimoCodigo.getAsunto();
+                    ultimaExpiracion = ultimoCodigo.getFechaExpiracion();
+
                     for (CodigoTemporalModel c : v.getCodigos()) {
-                        // AQUÍ ES DONDE SE CARGAN LAS ENTRADAS (LAZY LOADING)
-                        // Gracias al @Transactional, esto no falla.
                         if (c.getEntradas() != null) {
                             totalEntradas += c.getEntradas().size();
-
                             for (RegistroEntradaVisitanteModel r : c.getEntradas()) {
                                 if (ultimaFecha == null || r.getFechaHora().isAfter(ultimaFecha)) {
                                     ultimaFecha = r.getFechaHora();
@@ -125,18 +104,21 @@ public class VisitanteService {
                     }
                 }
 
+                // NUEVO CONSTRUCTOR CON NOMBRES SEPARADOS
                 resumen.add(new VisitanteResumenDTO(
                         v.getId_visitante(),
-                        v.getPrimerNombre() + " " + v.getApellidoPaterno(),
-                        (v.getCodigos() != null && !v.getCodigos().isEmpty()) ? v.getCodigos().get(v.getCodigos().size()-1).getAsunto() : "General",
+                        v.getPrimerNombre(),     // 1. Nombre
+                        v.getApellidoPaterno(),  // 2. Paterno
+                        v.getApellidoMaterno(),  // 3. Materno
+                        ultimoAsunto,
                         v.getCreatedAt(),
                         ultimaFecha,
                         totalEntradas,
-                        ultimaPuerta
+                        ultimaPuerta,
+                        ultimaExpiracion
                 ));
             }
 
-            // Ordenamos por fecha de creación descendente
             resumen.sort((a, b) -> {
                 LocalDateTime f1 = a.getFechaCreacion() != null ? a.getFechaCreacion() : LocalDateTime.MIN;
                 LocalDateTime f2 = b.getFechaCreacion() != null ? b.getFechaCreacion() : LocalDateTime.MIN;
@@ -145,61 +127,68 @@ public class VisitanteService {
 
             return resumen;
         } catch (Exception e) {
-            System.err.println("Error generando historial: " + e.getMessage());
             e.printStackTrace();
             return new ArrayList<>();
         }
     }
+    // 3. VALIDACIÓN (AQUÍ ESTÁ EL CAMBIO IMPORTANTE)
+    // ... Imports y resto de la clase ...
 
-    // ==========================================
-    // 3. VALIDACIÓN (ESCÁNER)
-    // ==========================================
+    // SUSTITUYE EL MÉTODO validarPasePorUuid POR ESTE COMPLETO:
     public ValidacionResponseDTO validarPasePorUuid(String uuid, int numeroPuerta) {
         Optional<CodigoTemporalModel> codigoOpt = codigoTemporalRepository.findByUuid(uuid);
 
         if (codigoOpt.isEmpty()) {
-            return new ValidacionResponseDTO(false, "Código no encontrado", null, null);
+            return new ValidacionResponseDTO(false, "Código no encontrado", null, null, 0, "N/A");
         }
 
         CodigoTemporalModel codigo = codigoOpt.get();
         VisitanteModel visitante = codigo.getVisitante();
 
+        // 1. Verificar si el visitante está borrado
         if (visitante.getDeleted() != null && visitante.getDeleted() == 1) {
-            return new ValidacionResponseDTO(false, "Visitante dado de baja", null, null);
+            return new ValidacionResponseDTO(false, "Visitante dado de baja", null, null, 0, "N/A");
         }
 
-        // Registrar entrada
+        // 2. VERIFICAR SI YA EXPIRÓ (Esto soluciona lo del pase de hace 3 días)
+        if (codigo.getFechaExpiracion().isBefore(LocalDateTime.now())) {
+            return new ValidacionResponseDTO(
+                    false,
+                    "PASE VENCIDO",
+                    visitante.getPrimerNombre() + " " + visitante.getApellidoPaterno(),
+                    codigo.getAsunto(),
+                    0,
+                    "N/A"
+            );
+        }
+
+        // 3. Registrar entrada si todo está bien
         RegistroEntradaVisitanteModel entrada = new RegistroEntradaVisitanteModel();
         entrada.setFechaHora(LocalDateTime.now());
         entrada.setEntrada(numeroPuerta);
         entrada.setCodigoTemporal(codigo);
         registroEntradaRepository.save(entrada);
 
-        return new ValidacionResponseDTO(true, "Acceso Permitido",
+        int totalAccesos = registroEntradaRepository.contarTotalEntradas(visitante.getId_visitante());
+
+        return new ValidacionResponseDTO(
+                true,
+                "Acceso Permitido",
                 visitante.getPrimerNombre() + " " + visitante.getApellidoPaterno(),
-                codigo.getAsunto());
+                codigo.getAsunto(),
+                totalAccesos,
+                "Puerta " + numeroPuerta
+        );
     }
 
-    // ==========================================
-    // 4. GESTIÓN (CRUD COMPLETO)
-    // ==========================================
+    // 4. GESTIÓN
+    public List<VisitanteModel> obtenerVisitantes() { return visitanteRepository.findByDeleted(0); }
 
-    // Obtener lista simple de activos
-    public List<VisitanteModel> obtenerVisitantes() {
-        return visitanteRepository.findByDeleted(0);
-    }
-
-    // Buscar por ID (Auxiliar)
-    public Optional<VisitanteModel> obtenerVisitantePorId(Integer id) {
-        return visitanteRepository.findById(id);
-    }
-
-    // Eliminar (Soft Delete)
     public boolean eliminarVisitanteSeguro(Integer id) {
         Optional<VisitanteModel> vOpt = visitanteRepository.findById(id);
         if(vOpt.isPresent()){
             VisitanteModel v = vOpt.get();
-            v.setDeleted(1); // Marcado como borrado
+            v.setDeleted(1);
             v.setUpdateAt(LocalDateTime.now());
             visitanteRepository.save(v);
             return true;
@@ -207,12 +196,11 @@ public class VisitanteService {
         return false;
     }
 
-    // Restaurar (Undo Delete)
     public boolean restaurarVisitanteSeguro(Integer id) {
         Optional<VisitanteModel> vOpt = visitanteRepository.findById(id);
         if(vOpt.isPresent()){
             VisitanteModel v = vOpt.get();
-            v.setDeleted(0); // Marcado como activo
+            v.setDeleted(0);
             v.setUpdateAt(LocalDateTime.now());
             visitanteRepository.save(v);
             return true;

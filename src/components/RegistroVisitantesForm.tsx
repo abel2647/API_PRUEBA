@@ -151,7 +151,7 @@
             };
 
             try {
-                const response = await fetch('http://localhost:8080/api/visitante', {
+                const response = await fetch('http://localhost:8080/api/visitante/registrar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataToSend),
@@ -165,7 +165,7 @@
                 const result = await response.json();
                 setMessage({
                     type: 'success',
-                    text: `Visitante ${result.primerNombre} ${result.apellidoPaterno} registrado exitosamente. ID: ${result.id_visitante}`
+                    text: `Visitante registrado exitosamente. ID: ${result.id_visitante}`
                 });
                 setQrValue(result.uuid); // Guarda el UUID para el QR
                 setRegistroId(result.id_visitante); // Guarda el ID para el pase

@@ -64,13 +64,18 @@ public interface RegistroEntradaVisitanteRepository extends JpaRepository<Regist
     // --- MÉTODOS PARA HISTÓRICO EXCEL ---
 
     // Total de visitas (JPQL)
-    @Query("SELECT COUNT(r) FROM RegistroEntradaVisitanteModel r WHERE r.codigoTemporal.visitante.id = :visitanteId")
+    @Query("SELECT COUNT(r) FROM RegistroEntradaVisitanteModel r WHERE r.codigoTemporal.visitante.id_visitante = :visitanteId")
     long countTotalVisitasPorVisitante(@Param("visitanteId") Integer visitanteId);
 
     // CORRECCIÓN AQUÍ:
     // Antes usaba nativeQuery con tablas mal nombradas. Ahora usa JPQL referenciando las entidades.
     // Esto evita el error "Table doesn't exist".
     @Query("SELECT MAX(r.fechaHora) FROM RegistroEntradaVisitanteModel r " +
-            "WHERE r.codigoTemporal.visitante.id = :visitanteId")
+            "WHERE r.codigoTemporal.visitante.id_visitante = :visitanteId")
     LocalDateTime findUltimaVisitaPorVisitante(@Param("visitanteId") Integer visitanteId);
+
+    // ESTE ES EL MÉTODO QUE TE FALTA Y CAUSA EL ERROR
+    @Query("SELECT COUNT(r) FROM RegistroEntradaVisitanteModel r WHERE r.codigoTemporal.visitante.id_visitante = :visitanteId")
+    int contarTotalEntradas(@Param("visitanteId") Integer visitanteId);
+
 }
