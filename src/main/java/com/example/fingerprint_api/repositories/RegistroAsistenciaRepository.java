@@ -79,7 +79,7 @@ public interface RegistroAsistenciaRepository extends JpaRepository<RegistroAsis
 
     // --- NUEVO MÉTODO PARA REPORTE EXCEL AGRUPADO ---
     // Devuelve: [0]Matricula, [1]Nombre, [2]Paterno, [3]Materno, [4]Carrera, [5]Total, [6]HoraMin, [7]HoraMax
-    @Query("SELECT r.alumno.numeroControl, r.alumno.primerNombre, r.alumno.apellidoPaterno, " +
+    /*@Query("SELECT r.alumno.numeroControl, r.alumno.primerNombre, r.alumno.apellidoPaterno, " +
             "r.alumno.apellidoMaterno, r.alumno.carreraClave, " +
             "COUNT(r), MIN(r.fechaHora), MAX(r.fechaHora) " +
             "FROM RegistroAsistenciaModel r " +
@@ -87,6 +87,20 @@ public interface RegistroAsistenciaRepository extends JpaRepository<RegistroAsis
             "AND (:puertaId IS NULL OR r.idEntrada = :puertaId) " +
             "GROUP BY r.alumno.numeroControl, r.alumno.primerNombre, r.alumno.apellidoPaterno, " +
             "r.alumno.apellidoMaterno, r.alumno.carreraClave " +
+            "ORDER BY r.alumno.apellidoPaterno ASC")
+    List<Object[]> obtenerResumenAsistencia(@Param("inicio") LocalDateTime inicio,
+                                            @Param("fin") LocalDateTime fin,
+                                            @Param("puertaId") Integer puertaId);*/
+
+    @Query("SELECT r.alumno.numeroControl, r.alumno.primerNombre, r.alumno.apellidoPaterno, " +
+            "r.alumno.apellidoMaterno, c.nombrecarrera, " + // <--- CAMBIO: Seleccionamos el nombre
+            "COUNT(r), MIN(r.fechaHora), MAX(r.fechaHora) " +
+            "FROM RegistroAsistenciaModel r, CarreraModel c " + // <--- CAMBIO: Agregamos la tabla Carrera
+            "WHERE r.alumno.carreraClave = c.id_carrera " +    // <--- CAMBIO: Hacemos la unión (Join)
+            "AND r.fechaHora BETWEEN :inicio AND :fin " +
+            "AND (:puertaId IS NULL OR r.idEntrada = :puertaId) " +
+            "GROUP BY r.alumno.numeroControl, r.alumno.primerNombre, r.alumno.apellidoPaterno, " +
+            "r.alumno.apellidoMaterno, c.nombrecarrera " + // <--- CAMBIO: Agrupamos por el nombre
             "ORDER BY r.alumno.apellidoPaterno ASC")
     List<Object[]> obtenerResumenAsistencia(@Param("inicio") LocalDateTime inicio,
                                             @Param("fin") LocalDateTime fin,
