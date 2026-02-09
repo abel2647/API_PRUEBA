@@ -78,4 +78,19 @@ public interface RegistroEntradaVisitanteRepository extends JpaRepository<Regist
     @Query("SELECT COUNT(r) FROM RegistroEntradaVisitanteModel r WHERE r.codigoTemporal.visitante.id_visitante = :visitanteId")
     int contarTotalEntradas(@Param("visitanteId") Integer visitanteId);
 
+    // --- NUEVO MÉTODO PARA REPORTE EXCEL VISITANTES (AGRUPADO) ---
+    // Devuelve: [0]Nombre, [1]Paterno, [2]Materno, [3]Asunto, [4]Acompañantes, [5]TotalEntradasHoy, [6]HoraMin, [7]HoraMax
+    @Query("SELECT v.primerNombre, v.apellidoPaterno, v.apellidoMaterno, " +
+            "ct.asunto, ct.numeroAcompañantes, " +
+            "COUNT(r), MIN(r.fechaHora), MAX(r.fechaHora) " +
+            "FROM RegistroEntradaVisitanteModel r " +
+            "JOIN r.codigoTemporal ct " +
+            "JOIN ct.visitante v " +
+            "WHERE r.fechaHora BETWEEN :inicio AND :fin " +
+            "AND (:puertaId IS NULL OR r.entrada = :puertaId) " +
+            "GROUP BY v.id_visitante, v.primerNombre, v.apellidoPaterno, v.apellidoMaterno, ct.asunto, ct.numeroAcompañantes " +
+            "ORDER BY v.apellidoPaterno ASC")
+    List<Object[]> obtenerResumenVisitantes(@Param("inicio") LocalDateTime inicio,
+                                            @Param("fin") LocalDateTime fin,
+                                            @Param("puertaId") Integer puertaId);
 }

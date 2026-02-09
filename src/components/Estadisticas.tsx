@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, UserCheck, User, RefreshCcw, Eraser, FileSpreadsheet, DoorOpen } from 'lucide-react';
+import { Search, Users, UserCheck, User, RefreshCcw, Eraser, FileSpreadsheet, DoorOpen, FileText } from 'lucide-react';
 
 // --- INTERFACES ---
 interface DatosPuerta {
@@ -98,7 +98,7 @@ export const Estadisticas = () => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Reporte_Asistencia_${filtros.fecha || 'General'}.xlsx`;
+                a.download = `Reporte de accesos del ${filtros.fecha || 'General'}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -142,6 +142,37 @@ export const Estadisticas = () => {
             tipo: 'TODOS',
             puerta: 'TODAS'
         });
+    };
+
+    const handleDescargarPdf = async () => {
+        try {
+            const params = new URLSearchParams();
+            if (filtros.fecha) params.append('fecha', filtros.fecha);
+            if (filtros.horaInicio) params.append('horaInicio', filtros.horaInicio);
+            if (filtros.horaFin) params.append('horaFin', filtros.horaFin);
+            if (filtros.tipo) params.append('tipo', filtros.tipo);
+            if (filtros.puerta && filtros.puerta !== 'TODAS') params.append('puerta', filtros.puerta);
+
+            const response = await fetch(`http://localhost:8080/api/dashboard/exportar-pdf?${params.toString()}`, {
+                method: 'GET',
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Reporte de accesos del ${filtros.fecha || 'General'}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert("No se pudo descargar el reporte PDF.");
+            }
+        } catch (error) {
+            console.error("Error de red al descargar PDF:", error);
+        }
     };
 
     return (
@@ -254,13 +285,23 @@ export const Estadisticas = () => {
                                 </Button>
                             </div>
 
-                            <Button
-                                className="w-full bg-green-600 hover:bg-green-700 text-white shadow-sm"
-                                onClick={handleDescargarExcel}
-                            >
-                                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                Excel
-                            </Button>
+                            {/* Fila de Exportación: Excel y PDF */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                                    onClick={handleDescargarExcel}
+                                >
+                                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                                    Excel
+                                </Button>
+                                <Button
+                                    className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
+                                    onClick={handleDescargarPdf}
+                                >
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    PDF
+                                </Button>
+                            </div>
                         </div>
 
                     </div>
@@ -309,12 +350,12 @@ export const Estadisticas = () => {
                                     <AreaChart data={data.asistenciaSemanal}>
                                         <defs>
                                             <linearGradient id="colorAlumnos" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                             </linearGradient>
                                             <linearGradient id="colorVisitantes" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
-                                                <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <XAxis dataKey="hora" fontSize={12} minTickGap={15} />
@@ -351,7 +392,7 @@ export const Estadisticas = () => {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="puerta" fontSize={12} />
                                         <YAxis fontSize={12} />
-                                        <RechartsTooltip cursor={{fill: 'transparent'}} />
+                                        <RechartsTooltip cursor={{ fill: 'transparent' }} />
                                         <Legend />
                                         <Bar dataKey="total" name="Total Entradas" fill="#10b981" radius={[4, 4, 0, 0]} />
                                     </BarChart>

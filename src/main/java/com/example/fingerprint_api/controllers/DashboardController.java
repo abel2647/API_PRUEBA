@@ -50,4 +50,23 @@ public class DashboardController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(new InputStreamResource(in));
     }
+
+    @GetMapping("/exportar-pdf")
+    public ResponseEntity<InputStreamResource> exportarPdf(
+            @RequestParam(required = false) String fecha,
+            @RequestParam(required = false) String horaInicio,
+            @RequestParam(required = false) String horaFin,
+            @RequestParam(defaultValue = "TODOS") String tipo,
+            @RequestParam(required = false) Integer puerta) {
+
+        ByteArrayInputStream bis = dashboardService.generarReportePdf(fecha, horaInicio, horaFin, tipo, puerta);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=reporte.pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(new InputStreamResource(bis));
+    }
 }

@@ -73,4 +73,18 @@ public interface RegistroAsistenciaRepository extends JpaRepository<RegistroAsis
     List<RegistroAsistenciaModel> findByFechaHoraBetweenAndPuerta(@Param("inicio") LocalDateTime inicio,
                                                                   @Param("fin") LocalDateTime fin,
                                                                   @Param("puertaId") Integer puertaId);
+    @Query("SELECT r.alumno.numeroControl, r.alumno.primerNombre, r.alumno.apellidoPaterno, " +
+            "r.alumno.apellidoMaterno, c.nombrecarrera, " + // <--- CAMBIO: Seleccionamos el nombre
+            "COUNT(r), MIN(r.fechaHora), MAX(r.fechaHora) " +
+            "FROM RegistroAsistenciaModel r, CarreraModel c " + // <--- CAMBIO: Agregamos la tabla Carrera
+            "WHERE r.alumno.carreraClave = c.id_carrera " +    // <--- CAMBIO: Hacemos la unión (Join)
+            "AND r.fechaHora BETWEEN :inicio AND :fin " +
+            "AND (:puertaId IS NULL OR r.idEntrada = :puertaId) " +
+            "GROUP BY r.alumno.numeroControl, r.alumno.primerNombre, r.alumno.apellidoPaterno, " +
+            "r.alumno.apellidoMaterno, c.nombrecarrera " + // <--- CAMBIO: Agrupamos por el nombre
+            "ORDER BY r.alumno.apellidoPaterno ASC")
+    List<Object[]> obtenerResumenAsistencia(@Param("inicio") LocalDateTime inicio,
+                                            @Param("fin") LocalDateTime fin,
+                                            @Param("puertaId") Integer puertaId);
 }
+
